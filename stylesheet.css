@@ -20,3 +20,21 @@
   border-bottom-width: 1px;
   border-bottom-style: solid;
 }
+
+.audio-button, .video-button {
+    font-weight: bold;
+    border-radius: 0;
+    padding: 6px;
+}
+
+.audio-button:hover, .audio-button:focus {
+    color: #323843;
+    background-color: #93e600;
+    border: none;
+}
+
+.video-button:hover, .video-button:focus {
+    color: #323843;
+    background-color: #1c99d5;
+    border: none;
+}

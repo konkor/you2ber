@@ -84,7 +84,7 @@ const U2Indicator = new Lang.Class({
             if (this.is_y2b (s)) uris.push (s.trim ());
         });
         if (uris.length) {
-            this.item.set_text (uris[0]);
+            this.item.set_uri (uris[0]);
         }
     },
 
@@ -101,15 +101,26 @@ const U2Indicator = new Lang.Class({
     build_menu: function () {
         this.menu.removeAll ();
         
-        this.item = new YoutubeItem ("");
+        this.item = new YoutubeItem ();
         this.menu.addMenuItem (this.item);
-        this.item.connect ('activate', Lang.bind (this, function (item) {
+        this.item.connect ('audio', Lang.bind (this, function (item) {
             if (!installed) return;
-            let args = [udl,"-o","%(title)s.%(ext)s","-x",item.label.text];
+            let args = [udl,"-o","%(title)s.mp3","-x",item.label.text];
+            let task = new SpawnPipe (args, MUSICDIR);
+        }));
+        this.item.connect ('video', Lang.bind (this, function (item) {
+            if (!installed) return;
+            let args = [udl,"-o","%(title)s.%(ext)s",item.label.text];
             let task = new SpawnPipe (args, MUSICDIR);
         }));
 
         this.menu.addMenuItem (new SeparatorItem ());
+        this.prefs = new PopupMenu.PopupMenuItem ("Preferences...");
+        this.menu.addMenuItem (this.prefs);
+        this.prefs.connect ('activate', Lang.bind (this, function () {
+            GLib.spawn_command_line_async ('gnome-shell-extension-prefs ' + Me.uuid);
+            this.emit ('activate');
+        }));
         if (!installed) {
             this.install = new PopupMenu.PopupMenuItem ("\u26a0 Install youtube-dl");
             this.menu.addMenuItem (this.install);
@@ -124,18 +135,46 @@ const U2Indicator = new Lang.Class({
 
 const YoutubeItem = new Lang.Class ({
     Name: 'YoutubeItem',
-    Extends: PopupMenu.PopupMenuItem,
+    Extends: PopupMenu.PopupBaseMenuItem,
 
-    _init: function (label, style) {
-        this.parent (" ", {style_class:style?style:'y2b-item'});
+    _init: function (params) {
+        this.parent ({ reactive: false, can_focus: false });
+        this.vbox = new St.BoxLayout({ vertical: true, style: 'padding: 8px; spacing: 4px;' });
+        this.actor.add_child (this.vbox);
+
+        this.label = new St.Label ({text: " ", style: ''});
+        this.label.align = St.Align.START;
+        this.vbox.add_child (this.label);
+
+        let box = new St.BoxLayout({ vertical: false, style: 'padding: 4px' });
+        this.vbox.add (box);
+        this.audio_button = new St.Button ({ label: "Audio", style_class: 'audio-button', x_expand:true });
+        box.add (this.audio_button);
+        this.video_button = new St.Button ({ label: "Video", style_class: 'video-button', x_expand:true});
+        box.add (this.video_button);
+
+        this.audio_button.connect ('clicked', Lang.bind (this, function () {
+            this.emit ('audio');
+            this.activate ();
+        }));
+        this.video_button.connect ('clicked', Lang.bind (this, function () {
+            this.emit ('video');
+            this.activate ();
+        }));
         this.label.connect ('notify::text', Lang.bind (this, function () {
             this.actor.visible = this.label.text.length > 0;
         }));
-        this.set_text (label);
+        this.set_text ("");
+        this.uri = "";
     },
 
     set_text: function (text) {
         this.label.set_text (text);
+    },
+
+    set_uri: function (uri) {
+        this.uri = uri;
+        this.set_text (uri);
     }
 });
 
