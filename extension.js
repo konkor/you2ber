@@ -120,13 +120,15 @@ const U2Indicator = new Lang.Class({
         this.menu.addMenuItem (this.item);
         this.item.connect ('audio', Lang.bind (this, function (item) {
             if (!installed) return;
-            let args = [udl,"-o","%(title)s.%(ext)s","-x","-f","m4a",item.label.text];
+            let args = [udl,"-o","%(title)s.%(ext)s","-x","-f","m4a",item.uri];
             let task = new SpawnPipe (args, MUSICDIR);
+            show_notification ("Starting " + item.uri);
         }));
         this.item.connect ('video', Lang.bind (this, function (item) {
             if (!installed) return;
-            let args = [udl,"-o","%(title)s.%(ext)s",item.label.text];
+            let args = [udl,"-o","%(title)s.%(ext)s",item.uri];
             let task = new SpawnPipe (args, MUSICDIR);
+            show_notification ("Starting " + item.uri);
         }));
 
         this.menu.addMenuItem (new SeparatorItem ());
