@@ -21,6 +21,7 @@ let MUSICDIR = GLib.get_user_special_dir (GLib.UserDirectory.DIRECTORY_MUSIC);
 const WATCH_TIMEOUT = 1000;
 
 let clipboard_watcher = 0;
+let installID = 0;
 let installed = false;
 let udl = null;
 let last_text = "";
@@ -98,6 +99,24 @@ const U2Indicator = new Lang.Class({
         return res;
     },
 
+    _install: function () {
+        let r, pid;
+        var pkexec = GLib.find_program_in_path ("pkexec");
+        if (!pkexec) return;
+        try {
+            [r, pid] = GLib.spawn_async (null, [pkexec, EXTENSIONDIR + "/install_ydl.sh"], null,
+                GLib.SpawnFlags.SEARCH_PATH | GLib.SpawnFlags.DO_NOT_REAP_CHILD, null);
+        } catch (e) {
+            show_notification (e.message);
+            return;
+        }
+        if (installID) this.install.disconnect (installID);
+        GLib.child_watch_add (GLib.PRIORITY_DEFAULT, pid, Lang.bind (this, function () {
+            show_notification ("Installation complete.");
+            print ("Installation complete.");
+        }));
+    },
+
     build_menu: function () {
         this.menu.removeAll ();
         
@@ -105,7 +124,7 @@ const U2Indicator = new Lang.Class({
         this.menu.addMenuItem (this.item);
         this.item.connect ('audio', Lang.bind (this, function (item) {
             if (!installed) return;
-            let args = [udl,"-o","%(title)s.mp3","-x",item.label.text];
+            let args = [udl,"-o","%(title)s.%(ext)s","-x","-f","m4a",item.label.text];
             let task = new SpawnPipe (args, MUSICDIR);
         }));
         this.item.connect ('video', Lang.bind (this, function (item) {
@@ -124,6 +143,9 @@ const U2Indicator = new Lang.Class({
         if (!installed) {
             this.install = new PopupMenu.PopupMenuItem ("\u26a0 Install youtube-dl");
             this.menu.addMenuItem (this.install);
+            installID = this.install.connect ('activate', Lang.bind (this, function () {
+                this._install ();
+            }));
         }
     },
 
