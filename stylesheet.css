@@ -1,0 +1,22 @@
+.y2b-menu {
+    min-width: 320px;
+}
+
+.y2b-item {
+    padding-top: 8px;
+    padding-bottom: 8px;
+}
+
+.y2b-separator-item {
+    padding: 0em 2.25em 0em 0em;
+    height: 15px;
+}
+
+.y2b-separator-menu-item {
+  height: 1px;
+  margin: 6px 24px;
+  background-color: transparent;
+  border-color: rgba(48,44,47,0.6);
+  border-bottom-width: 1px;
+  border-bottom-style: solid;
+}
