@@ -15,8 +15,8 @@ const Me = ExtensionUtils.getCurrentExtension ();
 
 const EXTENSIONDIR = Me.dir.get_path ();
 
-let MUSICDIR = GLib.get_user_special_dir (GLib.UserDirectory.DIRECTORY_MUSIC);
-//let VIDEODIR = GLib.get_user_special_dir (GLib.UserDirectory.DIRECTORY_VIDEOS);
+let MUSICDIR = get_special_dir (GLib.UserDirectory.DIRECTORY_MUSIC);
+let VIDEODIR = get_special_dir (GLib.UserDirectory.DIRECTORY_VIDEOS);
 
 const WATCH_TIMEOUT = 1000;
 
@@ -34,10 +34,6 @@ const U2Indicator = new Lang.Class({
     _init: function () {
         this.parent (0.0, "Gnome Youtube Downloader", false);
         
-        if (!MUSICDIR) MUSICDIR = GLib.get_home_dir ();
-        MUSICDIR += "/youtube";
-        if (!GLib.file_test (MUSICDIR, GLib.FileTest.EXISTS))
-            GLib.mkdir_with_parents (MUSICDIR, 484);
         check_install_udl ();
         this._icon_on = new St.Icon ({
             gicon:Gio.icon_new_for_string (EXTENSIONDIR + "/data/icons/u2b.svg")
@@ -278,6 +274,16 @@ var SpawnPipe = new Lang.Class({
 function check_install_udl () {
     udl = GLib.find_program_in_path ("youtube-dl");
     if (udl) installed = true;
+}
+
+function get_special_dir (dir) {
+    let folder = GLib.get_user_special_dir (dir);
+    if (!folder) folder = GLib.get_home_dir ();
+    folder += "/youtube";
+    if (!GLib.file_test (folder, GLib.FileTest.EXISTS))
+        GLib.mkdir_with_parents (folder, 484);
+
+    return folder;
 }
 
 let notify_source = null;
