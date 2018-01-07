@@ -12,11 +12,16 @@ const Soup = imports.gi.Soup;
 
 const ExtensionUtils = imports.misc.extensionUtils;
 const Me = ExtensionUtils.getCurrentExtension ();
+const Convenience = Me.imports.convenience;
 
 const EXTENSIONDIR = Me.dir.get_path ();
 
-let MUSICDIR = get_special_dir (GLib.UserDirectory.DIRECTORY_MUSIC);
-let VIDEODIR = get_special_dir (GLib.UserDirectory.DIRECTORY_VIDEOS);
+const DEBUG_KEY = 'debug';
+let DEBUG = false;
+const AUDIO_KEY = 'audio-folder';
+let AUDIODIR = "";
+const VIDEO_KEY = 'video-folder';
+let VIDEODIR = "";
 
 const WATCH_TIMEOUT = 1000;
 
@@ -33,7 +38,14 @@ const U2Indicator = new Lang.Class({
 
     _init: function () {
         this.parent (0.0, "Gnome Youtube Downloader", false);
-        
+
+        this.settings = Convenience.getSettings();
+        DEBUG = this.settings.get_boolean (DEBUG_KEY);
+        AUDIODIR = this.settings.get_string (AUDIO_KEY);
+        if (!AUDIODIR) AUDIODIR = Convenience.get_special_dir (GLib.UserDirectory.DIRECTORY_MUSIC);
+        VIDEODIR = this.settings.get_string (VIDEO_KEY);
+        if (!VIDEODIR) VIDEODIR = Convenience.get_special_dir (GLib.UserDirectory.DIRECTORY_VIDEOS);
+
         check_install_udl ();
         this._icon_on = new St.Icon ({
             gicon:Gio.icon_new_for_string (EXTENSIONDIR + "/data/icons/u2b.svg")
@@ -109,7 +121,7 @@ const U2Indicator = new Lang.Class({
         if (installID) this.install.disconnect (installID);
         GLib.child_watch_add (GLib.PRIORITY_DEFAULT, pid, Lang.bind (this, function () {
             show_notification ("Installation complete.");
-            print ("Installation complete.");
+            debug ("Installation complete.");
         }));
     },
 
@@ -119,16 +131,16 @@ const U2Indicator = new Lang.Class({
         this.item = new YoutubeItem ();
         this.menu.addMenuItem (this.item);
         this.item.connect ('audio', Lang.bind (this, function (item) {
-            if (!installed) return;
-            let args = [udl,"-o","%(title)s.%(ext)s","-x","-f","m4a",item.uri];
-            let task = new SpawnPipe (args, MUSICDIR);
-            show_notification ("Starting " + item.uri);
+            if (!installed || !item.uri) return;
+            if (GLib.spawn_command_line_async (udl + " -o " + AUDIODIR + "/%(title)s.%(ext)s -x -f m4a" + item.uri))
+                show_notification ("Starting " + item.uri);
+            else show_notification ("Error " + item.uri);
         }));
         this.item.connect ('video', Lang.bind (this, function (item) {
-            if (!installed) return;
-            let args = [udl,"-o","%(title)s.%(ext)s",item.uri];
-            let task = new SpawnPipe (args, MUSICDIR);
-            show_notification ("Starting " + item.uri);
+            if (!installed || !item.uri) return;
+            if (GLib.spawn_command_line_async (udl + " -o " + VIDEODIR + "/%(title)s.%(ext)s " + item.uri))
+                show_notification ("Starting " + item.uri);
+            else show_notification ("Error " + item.uri);
         }));
 
         this.menu.addMenuItem (new SeparatorItem ());
@@ -215,7 +227,7 @@ var SpawnPipe = new Lang.Class({
     Name: 'SpawnPipe',
 
     _init: function (args, dir) {
-        print (args);
+        debug (args);
         dir = dir || "/";
         let exit, pid, stdin_fd, stdout_fd, stderr_fd;
         this.error = "";
@@ -229,34 +241,34 @@ var SpawnPipe = new Lang.Class({
                                             null);
             GLib.close (stdin_fd);
             let outchannel = GLib.IOChannel.unix_new (stdout_fd);
-            GLib.io_add_watch (outchannel,0,GLib.IOCondition.IN | GLib.IOCondition.HUP, (channel, condition) => {
+            GLib.io_add_watch (outchannel,300,GLib.IOCondition.IN | GLib.IOCondition.HUP, (channel, condition) => {
                 return this.process_line (channel, condition, "stdout");
             });
             let errchannel = GLib.IOChannel.unix_new (stderr_fd);
-            GLib.io_add_watch (errchannel,0,GLib.IOCondition.IN | GLib.IOCondition.HUP, (channel, condition) => {
+            GLib.io_add_watch (errchannel,300,GLib.IOCondition.IN | GLib.IOCondition.HUP, (channel, condition) => {
                 return this.process_line (channel, condition, "stderr");
             });
-            let watch = GLib.child_watch_add (GLib.PRIORITY_DEFAULT, pid, Lang.bind (this, (pid, status, o) => {
-                print ("watch handler " + pid + ":" + status + ":" + o);
+            let watch = GLib.child_watch_add (300, pid, Lang.bind (this, (pid, status, o) => {
+                debug ("watch handler " + pid + ":" + status + ":" + o);
                 GLib.source_remove (watch);
                 GLib.spawn_close_pid (pid);
                 if (status == 0) show_notification ("Download complete.\n" + this.dest);
                 else show_notification ("Download error: " + status + "\n" + this.error);
             }));
         } catch (e) {
-            print (e);
+            error (e);
         }
     },
 
     process_line: function (channel, condition, stream_name) {
         if (condition == GLib.IOCondition.HUP) {
-            print (stream_name, ": has been closed");
+            debug (stream_name, ": has been closed");
             return false;
         }
         try {
             var [,line,] = channel.read_line (), i = -1;
             if (line) {
-                print (stream_name, line);
+                debug (stream_name, line);
                 if (stream_name == "stderr") {
                     this.error = line;
                 } else {
@@ -278,16 +290,6 @@ function check_install_udl () {
     if (udl) installed = true;
 }
 
-function get_special_dir (dir) {
-    let folder = GLib.get_user_special_dir (dir);
-    if (!folder) folder = GLib.get_home_dir ();
-    folder += "/youtube";
-    if (!GLib.file_test (folder, GLib.FileTest.EXISTS))
-        GLib.mkdir_with_parents (folder, 484);
-
-    return folder;
-}
-
 let notify_source = null;
 function init_notify () {
     if (notify_source) return;
@@ -306,6 +308,15 @@ function show_notification (message) {
     notification = new MessageTray.Notification (notify_source, message);
     notification.setTransient (true);
     notify_source.notify (notification);
+}
+
+
+function debug (msg) {
+    if (DEBUG) Convenience.debug (msg);
+}
+
+function error (msg) {
+    Convenience.error (msg);
 }
 
 let uindicator;
