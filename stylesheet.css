@@ -7,32 +7,16 @@
     padding-bottom: 8px;
 }
 
-.y2b-separator-item {
-    padding: 0em 2.25em 0em 0em;
-    height: 15px;
-}
-
-.y2b-separator-menu-item {
-  height: 1px;
-  margin: 6px 24px;
-  background-color: transparent;
-  border-color: rgba(48,44,47,0.6);
-  border-bottom-width: 1px;
-  border-bottom-style: solid;
-}
-
 .audio-button, .video-button {
     font-weight: bold;
     border-radius: 0;
     padding: 6px;
 }
-
 .audio-button:hover, .audio-button:focus {
     color: #323843;
     background-color: #93e600;
     border: none;
 }
-
 .video-button:hover, .video-button:focus {
     color: #323843;
     background-color: #1c99d5;

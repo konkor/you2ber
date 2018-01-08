@@ -143,13 +143,8 @@ const U2Indicator = new Lang.Class({
             else show_notification ("Error " + item.uri);
         }));
 
-        this.menu.addMenuItem (new SeparatorItem ());
-        this.prefs = new PopupMenu.PopupMenuItem ("Preferences...");
+        this.prefs = new PrefsMenuItem ();
         this.menu.addMenuItem (this.prefs);
-        this.prefs.connect ('activate', Lang.bind (this, function () {
-            GLib.spawn_command_line_async ('gnome-shell-extension-prefs ' + Me.uuid);
-            this.emit ('activate');
-        }));
         if (!installed) {
             this.install = new PopupMenu.PopupMenuItem ("\u26a0 Install youtube-dl");
             this.menu.addMenuItem (this.install);
@@ -207,53 +202,59 @@ const YoutubeItem = new Lang.Class ({
     set_uri: function (uri) {
         this.uri = uri;
         this.set_text (uri);
+        if (!udl) return;
+        var pipe = new SpawnPipe ([udl,"-e",this.uri], null, Lang.bind (this, (stdout, err) => {
+            if (stdout.length) this.set_text (stdout[0]);
+            else if (err) this.set_text (err);
+        }));
     }
 });
 
-const SeparatorItem = new Lang.Class({
-    Name: 'SeparatorItem',
+const PrefsMenuItem = new Lang.Class({
+    Name: 'PrefsMenuItem',
     Extends: PopupMenu.PopupBaseMenuItem,
 
     _init: function () {
-        this.parent({reactive: false, can_focus: false, style_class: 'y2b-separator-item'});
-        this._separator = new St.Widget({ style_class: 'y2b-separator-menu-item',
-                                          y_expand: true,
-                                          y_align: 2 });
-        this.actor.add(this._separator, {expand: true});
+        this.parent ({ reactive: false, can_focus: false});
+        this.actor.add (new St.Label ({text: ' '}), { expand: true });
+        this.preferences = new St.Button ({ child: new St.Icon ({ icon_name: 'preferences-system-symbolic' }), style_class: 'system-menu-action'});
+        this.actor.add (this.preferences, { expand: true, x_fill: false });
+        this.preferences.connect ('clicked', Lang.bind (this, function () {
+            GLib.spawn_command_line_async ('gnome-shell-extension-prefs ' + Me.uuid);
+            this.emit ('activate');
+        }));
+        this.actor.add (new St.Label ({text: ' '}), { expand: true });
     }
 });
 
 var SpawnPipe = new Lang.Class({
     Name: 'SpawnPipe',
 
-    _init: function (args, dir) {
+    _init: function (args, dir, callback) {
         debug (args);
         dir = dir || "/";
         let exit, pid, stdin_fd, stdout_fd, stderr_fd;
         this.error = "";
+        this.stdout = [];
         this.dest = "";
 
-        try{
-            [exit, pid, stdin_fd, stdout_fd, stderr_fd] = GLib.spawn_async_with_pipes (dir,
-                                            args,
-                                            null,
-                                            GLib.SpawnFlags.DO_NOT_REAP_CHILD,
-                                            null);
+        try {
+            [exit, pid, stdin_fd, stdout_fd, stderr_fd] =
+                GLib.spawn_async_with_pipes (dir,args,null,GLib.SpawnFlags.DO_NOT_REAP_CHILD,null);
             GLib.close (stdin_fd);
             let outchannel = GLib.IOChannel.unix_new (stdout_fd);
-            GLib.io_add_watch (outchannel,300,GLib.IOCondition.IN | GLib.IOCondition.HUP, (channel, condition) => {
+            GLib.io_add_watch (outchannel,100,GLib.IOCondition.IN | GLib.IOCondition.HUP, (channel, condition) => {
                 return this.process_line (channel, condition, "stdout");
             });
             let errchannel = GLib.IOChannel.unix_new (stderr_fd);
-            GLib.io_add_watch (errchannel,300,GLib.IOCondition.IN | GLib.IOCondition.HUP, (channel, condition) => {
+            GLib.io_add_watch (errchannel,100,GLib.IOCondition.IN | GLib.IOCondition.HUP, (channel, condition) => {
                 return this.process_line (channel, condition, "stderr");
             });
-            let watch = GLib.child_watch_add (300, pid, Lang.bind (this, (pid, status, o) => {
+            let watch = GLib.child_watch_add (100, pid, Lang.bind (this, (pid, status, o) => {
                 debug ("watch handler " + pid + ":" + status + ":" + o);
                 GLib.source_remove (watch);
                 GLib.spawn_close_pid (pid);
-                if (status == 0) show_notification ("Download complete.\n" + this.dest);
-                else show_notification ("Download error: " + status + "\n" + this.error);
+                if (callback) callback (this.stdout, this.error);
             }));
         } catch (e) {
             error (e);
@@ -272,10 +273,7 @@ var SpawnPipe = new Lang.Class({
                 if (stream_name == "stderr") {
                     this.error = line;
                 } else {
-                    i = line.indexOf ("Destination:")
-                    if (i > -1) {
-                        this.dest = line.substring(i+12).trim ();
-                    }
+                    this.stdout.push (line);
                 }
             }
         } catch (e) {
