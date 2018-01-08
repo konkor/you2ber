@@ -42,7 +42,7 @@ sudo chmod a+rx /usr/local/bin/youtube-dl
 ```
 
 ### Install from GitHub branch (default master)
-1. Download [install_obmin.sh](https://github.com/konkor/obmin/raw/master/install_obmin.sh)
+1. Download
 ```
 wget https://github.com/konkor/you2ber/archive/master.zip
 ```
