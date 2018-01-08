@@ -9,10 +9,11 @@
 ## Main Features
 * Clipboard support.
 * Audio extraction to _~/Music/youtube_ folder.
-
-## Planned Features
 * Video extraction to _~/Videos/youtube_ folder.
-* Preferences
+
+## How-to use
+1. Copy valid URI address to the clipboard buffer
+2. Open the extension menu and select a desired audio or video stream.
 
 ## Contributions
 * Report [a bug](https://github.com/konkor/you2ber/issues).
@@ -30,6 +31,9 @@ _Behind the development for the Linux Desktop are ordinary people who spend a lo
 ### Dependencies
 * [youtube-dl](https://github.com/rg3/youtube-dl)
 * Gnome Shell 3.14+
+
+### Recommends
+* ffmpeg (youtube-dl dependency for media manipulation)
 
 Linux installation:
 ```
