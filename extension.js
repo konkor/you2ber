@@ -40,11 +40,7 @@ const U2Indicator = new Lang.Class({
         this.parent (0.0, "Gnome Youtube Downloader", false);
 
         this.settings = Convenience.getSettings();
-        DEBUG = this.settings.get_boolean (DEBUG_KEY);
-        AUDIODIR = this.settings.get_string (AUDIO_KEY);
-        if (!AUDIODIR) AUDIODIR = Convenience.get_special_dir (GLib.UserDirectory.DIRECTORY_MUSIC);
-        VIDEODIR = this.settings.get_string (VIDEO_KEY);
-        if (!VIDEODIR) VIDEODIR = Convenience.get_special_dir (GLib.UserDirectory.DIRECTORY_VIDEOS);
+        this.get_settings ();
 
         check_install_udl ();
         this._icon_on = new St.Icon ({
@@ -59,11 +55,20 @@ const U2Indicator = new Lang.Class({
             if (!this.menu.isOpen) return;
             if (!installed) check_install_udl ();
             if (this.install) this.install.actor.visible = !installed;
+            this.get_settings ();
             this.get_clipboard ();
         }));
 
         this.build_menu ();
         //this.add_watcher ();
+    },
+
+    get_settings: function () {
+        DEBUG = this.settings.get_boolean (DEBUG_KEY);
+        AUDIODIR = this.settings.get_string (AUDIO_KEY);
+        if (!AUDIODIR) AUDIODIR = Convenience.get_special_dir (GLib.UserDirectory.DIRECTORY_MUSIC);
+        VIDEODIR = this.settings.get_string (VIDEO_KEY);
+        if (!VIDEODIR) VIDEODIR = Convenience.get_special_dir (GLib.UserDirectory.DIRECTORY_VIDEOS);
     },
 
     add_watcher: function () {
@@ -132,7 +137,7 @@ const U2Indicator = new Lang.Class({
         this.menu.addMenuItem (this.item);
         this.item.connect ('audio', Lang.bind (this, function (item) {
             if (!installed || !item.uri) return;
-            if (GLib.spawn_command_line_async (udl + " -o " + AUDIODIR + "/%(title)s.%(ext)s -x -f m4a" + item.uri))
+            if (GLib.spawn_command_line_async (udl + " -o " + AUDIODIR + "/%(title)s.%(ext)s -x -f m4a " + item.uri))
                 show_notification ("Starting " + item.uri);
             else show_notification ("Error " + item.uri);
         }));
