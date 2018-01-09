@@ -46,7 +46,7 @@ sudo chmod a+rx /usr/local/bin/youtube-dl
 ```
 wget https://github.com/konkor/you2ber/archive/master.zip
 ```
-2. Unpack this archive to `/.local/share/gnome-shell/extensions/you2ber@konkor`
+2. Unpack this archive to `/.local/share/gnome-shell/extensions/you2ber@konkor` or install in the _gnome-tweak-tool_
 3. Restart Gnome to reload extensions by:
  * user's **Log-out/Log-in** (_X11/Wayland_)
  * <kbd>Alt</kbd>+<kbd>F2</kbd> and enter <kbd>r</kbd> command (_X11 only_)

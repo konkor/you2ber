@@ -1,5 +1,5 @@
 {
-  "description": "Gnome Youtube Downloader\n\n Simple helper for youtube-dl project. It allows you to save locally desired media content without any browser extensions. Just copy URL address of a media content to the clipboard and select this item in the extension menu to store it.\n * Required the installation of the latest youtube-dl package.\nRecommends: ffmpeg (youtube-dl dependency for media manipulation)\n\nFor more information and how-to see README.md",
+  "description": "Gnome Youtube Downloader\n\n Simple helper for youtube-dl project. It allows you to save locally desired media content without any browser extensions. Just copy URL address of a media content to the clipboard and select this item in the extension menu to store it.\n * Required the installation of the latest youtube-dl package.\n * Recommends ffmpeg (youtube-dl dependency for media manipulation)\n\nFor more information and how-to see README.md",
   "name": "you2ber",
   "settings-schema": "org.konkor.you2ber",
   "shell-version": [

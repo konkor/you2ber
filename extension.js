@@ -132,18 +132,24 @@ const U2Indicator = new Lang.Class({
 
     build_menu: function () {
         this.menu.removeAll ();
-        
+
         this.item = new YoutubeItem ();
         this.menu.addMenuItem (this.item);
         this.item.connect ('audio', Lang.bind (this, function (item) {
             if (!installed || !item.uri) return;
-            if (GLib.spawn_command_line_async (udl + " -o " + AUDIODIR + "/%(title)s.%(ext)s -x -f m4a " + item.uri))
+            var cmd = udl + " -o " + AUDIODIR + "/%(title)s.%(ext)s -x -f ";
+            if (item.profile.id) cmd += item.profile.id + " " + item.uri;
+            else cmd += "m4a " + item.uri;
+            if (GLib.spawn_command_line_async (cmd))
                 show_notification ("Starting " + item.uri);
             else show_notification ("Error " + item.uri);
         }));
         this.item.connect ('video', Lang.bind (this, function (item) {
             if (!installed || !item.uri) return;
-            if (GLib.spawn_command_line_async (udl + " -o " + VIDEODIR + "/%(title)s.%(ext)s " + item.uri))
+            var cmd = udl + " -o " + VIDEODIR + "/%(title)s.%(ext)s ";
+            if (item.profile.id) cmd += "-f " + item.profile.id + " " + item.uri;
+            else cmd += item.uri;
+            if (GLib.spawn_command_line_async (cmd))
                 show_notification ("Starting " + item.uri);
             else show_notification ("Error " + item.uri);
         }));
@@ -167,12 +173,15 @@ const U2Indicator = new Lang.Class({
 
 const YoutubeItem = new Lang.Class ({
     Name: 'YoutubeItem',
-    Extends: PopupMenu.PopupBaseMenuItem,
+    Extends: PopupMenu.PopupMenuSection,
 
-    _init: function (params) {
-        this.parent ({ reactive: false, can_focus: false });
-        this.vbox = new St.BoxLayout({ vertical: true, style: 'padding: 8px; spacing: 4px;' });
-        this.actor.add_child (this.vbox);
+    _init: function () {
+        this.parent ();
+        this.item = new PopupMenu.PopupBaseMenuItem ({ reactive: false, can_focus: false });
+        this.addMenuItem (this.item);
+
+        this.vbox = new St.BoxLayout({ vertical:true, style:"padding:0px;spacing:0", x_expand:true });
+        this.item.actor.add_child (this.vbox);
 
         this.label = new St.Label ({text: " ", style: ''});
         this.label.align = St.Align.START;
@@ -185,19 +194,23 @@ const YoutubeItem = new Lang.Class ({
         this.video_button = new St.Button ({ label: "Video", style_class: 'video-button', x_expand:true});
         box.add (this.video_button);
 
+        this.quality = new PopupMenu.PopupSubMenuMenuItem ("Auto Profile", false);
+        this.addMenuItem (this.quality);
+
         this.audio_button.connect ('clicked', Lang.bind (this, function () {
             this.emit ('audio');
-            this.activate ();
+            this.item.activate ();
         }));
         this.video_button.connect ('clicked', Lang.bind (this, function () {
             this.emit ('video');
-            this.activate ();
+            this.item.activate ();
         }));
         this.label.connect ('notify::text', Lang.bind (this, function () {
             this.actor.visible = this.label.text.length > 0;
         }));
         this.set_text ("");
         this.uri = "";
+        this.profile = {id:"",desc:"Auto Profile",audio:true,video:true};
     },
 
     set_text: function (text) {
@@ -212,6 +225,75 @@ const YoutubeItem = new Lang.Class ({
             if (stdout.length) this.set_text (stdout[0]);
             else if (err) this.set_text (err);
         }));
+        this.get_quality ();
+    },
+
+    get_quality: function (text) {
+        this.quality.actor.visible = false;
+        this.quality.menu.removeAll ();
+        this.profiles = [];
+        var pipe = new SpawnPipe ([udl,"-F",this.uri], null, Lang.bind (this, (stdout, err) => {
+            if (stdout.length) this.get_profiles (stdout);
+        }));
+    },
+
+    get_profiles: function (text) {
+        var ar = [], s = "", a = true, v = true, id = "";
+        for (let i=0; i<text.length; i++) {
+            if (text[i].length < 10) continue;
+            ar = []; a = true; v = true; s = "";
+            text[i] = text[i].replace ("DASH","");
+            if (text[i].indexOf ("audio only") > 0) {
+                v = false; text[i] = text[i].replace ("audio only","");
+            } else if (text[i].indexOf ("video only") > 0) {
+                a = false; text[i] = text[i].replace ("video only","");
+            }
+            text[i].split (" ").forEach (w=>{
+                if (w.trim().length > 1) ar.push (w.trim().replace(',',''));
+            });
+            if (ar.length > 1 && Number.isInteger(parseInt (ar[0]))) {
+                id = ar[0];
+                if (a && v) ar[0] = "(av)";
+                else if (a) ar[0] = "(a)";
+                else ar[0] = "(v)";
+                ar.forEach (a=>{s += a + " ";});
+                this.profiles.push ({id:id,desc:s.trim(),audio:a,video:v});
+            }
+        }
+        let mi = new QualityMenuItem ({id:"",desc:"Auto Profile",audio:true,video:true});
+        this.quality.menu.addMenuItem (mi);
+        mi.connect ('select', Lang.bind (this, (o)=>{
+            this.on_profile (o.profile);
+        }));
+        this.profiles.forEach (p=>{
+            mi = new QualityMenuItem (p);
+            this.quality.menu.addMenuItem (mi);
+            mi.connect ('select', Lang.bind (this, (o)=>{
+                this.on_profile (o.profile);
+            }));
+        });
+        if (this.profiles.length > 0) this.quality.actor.visible = true;
+    },
+
+    on_profile: function (profile) {
+        this.profile = profile;
+        this.quality.label.text = profile.desc;
+        this.audio_button.visible = profile.audio;
+        this.video_button.visible = profile.video;
+    }
+});
+
+const QualityMenuItem = new Lang.Class({
+    Name: 'QualityMenuItem',
+    Extends: PopupMenu.PopupMenuItem,
+
+    _init: function (profile) {
+        this.parent (profile.desc);
+        this.profile = profile;
+    },
+
+    activate: function (event) {
+        this.emit ('select');
     }
 });
 
