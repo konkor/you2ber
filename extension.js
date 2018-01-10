@@ -256,7 +256,7 @@ const YoutubeItem = new Lang.Class ({
             if (text[i].trim().length < 2) continue;
             if (text[i].indexOf ("subtitles for") > 0) auto = false;
             s = text[i].split (" ")[0];
-            if (LANGS.indexOf (s) > -1)
+            if (LANGS.indexOf (s.toLowerCase()) > -1)
                 if (auto) this.caps.push (s);
                 else this.subs.push (s);
         }
