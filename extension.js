@@ -312,7 +312,7 @@ const YoutubeItem = new Lang.Class ({
                 else if (a) ar[0] = "(a)";
                 else ar[0] = "(v)";
                 ar.forEach (a=>{s += a + " ";});
-                this.profiles.push ({id:id,desc:s.trim(),audio:a,video:v});
+                if (a) this.profiles.push ({id:id,desc:s.trim(),audio:a,video:v});
             }
         }
         let mi = new QualityMenuItem ({id:"",desc:"Auto Profile",audio:true,video:true});
