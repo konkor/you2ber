@@ -16,6 +16,16 @@ const Convenience = Me.imports.convenience;
 
 const EXTENSIONDIR = Me.dir.get_path ();
 
+const LANGS = [
+"af","am","ar","az","be","bg","bn","bs","ca","ceb","co","cs","cy","da","de","el","en",
+"eo","es","et","eu","fa","fi","fil","fr","fy","ga","gd","gl","gu","ha","haw","hi","hmn",
+"hr","ht","hu","hy","id","ig","is","it","iw","ja","jv","ka","kk","km","kn","ko","ku",
+"ky","la","lb","lo","lt","lv","mg","mi","mk","ml","mn","mr","ms","mt","my","ne","nl",
+"no","ny","pa","pl","ps","pt","pt-br","ro","ru","sd","si","sk","sl","sm","sn","so","sq",
+"sr","st","su","sv","sw","ta","te","tg","th","tr","uk","ur","uz","vi","xh","yi","yo",
+"zh-hans","zh-hant","zu"
+];
+
 const DEBUG_KEY = 'debug';
 let DEBUG = false;
 const AUDIO_KEY = 'audio-folder';
@@ -196,6 +206,8 @@ const YoutubeItem = new Lang.Class ({
 
         this.quality = new PopupMenu.PopupSubMenuMenuItem ("Auto Profile", false);
         this.addMenuItem (this.quality);
+        this.subtitles = new PopupMenu.PopupSubMenuMenuItem ("Subtitles", false);
+        this.addMenuItem (this.subtitles);
 
         this.audio_button.connect ('clicked', Lang.bind (this, function () {
             this.emit ('audio');
@@ -226,6 +238,49 @@ const YoutubeItem = new Lang.Class ({
             else if (err) this.set_text (err);
         }));
         this.get_quality ();
+        this.get_subtitles ();
+    },
+
+    get_subtitles: function (text) {
+        this.subtitles.actor.visible = false;
+        this.subtitles.menu.removeAll ();
+        this.subs = []; this.caps = [];
+        var pipe = new SpawnPipe ([udl,"--list-subs",this.uri], null, Lang.bind (this, (stdout, err) => {
+            if (stdout.length) this.get_subs (stdout);
+        }));
+    },
+
+    get_subs: function (text) {
+        var s = "", auto = true;
+        for (let i=0; i<text.length; i++) {
+            if (text[i].trim().length < 2) continue;
+            if (text[i].indexOf ("subtitles for") > 0) auto = false;
+            s = text[i].split (" ")[0];
+            if (LANGS.indexOf (s) > -1)
+                if (auto) this.caps.push (s);
+                else this.subs.push (s);
+        }
+        let mi = new PopupMenu.PopupMenuItem ("All Available Languages");
+        this.subtitles.menu.addMenuItem (mi);
+        mi.connect ('activate', Lang.bind (this, (o)=>{
+            if (GLib.spawn_command_line_async (udl + " -o " + VIDEODIR +
+                "/%(title)s.%(ext)s --write-sub --sub-format best --all-subs " +
+                "--convert-subs srt --skip-download " + this.uri))
+                show_notification ("Starting " + item.uri);
+            else show_notification ("Error " + item.uri);
+        }));
+        this.subs.forEach (p=>{
+            mi = new PopupMenu.PopupMenuItem (p);
+            this.subtitles.menu.addMenuItem (mi);
+            mi.connect ('activate', Lang.bind (this, (o)=>{
+                if (GLib.spawn_command_line_async (udl + " -o " + VIDEODIR +
+                    "/%(title)s.%(ext)s --write-sub --sub-format best --sub-lang " +
+                    o.label.text + " --convert-subs srt --skip-download " + this.uri))
+                    show_notification ("Starting " + item.uri);
+                else show_notification ("Error " + item.uri);
+            }));
+        });
+        if (this.subs.length > 0) this.subtitles.actor.visible = true;
     },
 
     get_quality: function (text) {
