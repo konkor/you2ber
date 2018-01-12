@@ -126,18 +126,10 @@ const U2Indicator = new Lang.Class({
         let r, pid;
         var pkexec = GLib.find_program_in_path ("pkexec");
         if (!pkexec) return;
-        try {
-            [r, pid] = GLib.spawn_async (null, [pkexec, EXTENSIONDIR + "/install_ydl.sh"], null,
-                GLib.SpawnFlags.SEARCH_PATH | GLib.SpawnFlags.DO_NOT_REAP_CHILD, null);
-        } catch (e) {
-            show_notification (e.message);
-            return;
-        }
-        if (installID) this.install.disconnect (installID);
-        GLib.child_watch_add (GLib.PRIORITY_DEFAULT, pid, Lang.bind (this, function () {
+        spawn_async ([pkexec, EXTENSIONDIR + "/install_ydl.sh"], ()=>{
             show_notification ("Installation complete.");
-            debug ("Installation complete.");
-        }));
+        });
+        if (installID) this.install.disconnect (installID);
     },
 
     build_menu: function () {
@@ -147,21 +139,40 @@ const U2Indicator = new Lang.Class({
         this.menu.addMenuItem (this.item);
         this.item.connect ('audio', Lang.bind (this, function (item) {
             if (!installed || !item.uri) return;
-            var cmd = udl + " -o " + AUDIODIR + "/%(title)s.%(ext)s -x -f ";
+            /*var cmd = udl + " -o " + AUDIODIR + "/%(title)s.%(ext)s -x -f ";
             if (item.profile.id) cmd += item.profile.id + " " + item.uri;
             else cmd += "m4a " + item.uri;
             if (GLib.spawn_command_line_async (cmd))
                 show_notification ("Starting " + item.uri);
-            else show_notification ("Error " + item.uri);
+            else show_notification ("Error " + item.uri);*/
+            var args = [udl,"-o",AUDIODIR + "/%(title)s.%(ext)s","-x","-f"];
+            if (item.profile.id) args.push (item.profile.id);
+            else args.push ("m4a");
+            args.push (item.uri);
+            spawn_async (args, Lang.bind (this, function (p,s,o){
+                show_notification ("Complete " + item.uri + s);
+            }));
+            show_notification ("Starting " + item.uri);
         }));
         this.item.connect ('video', Lang.bind (this, function (item) {
             if (!installed || !item.uri) return;
-            var cmd = udl + " -o " + VIDEODIR + "/%(title)s.%(ext)s ";
+            /*var cmd = udl + " -o " + VIDEODIR + "/%(title)s.%(ext)s ";
             if (item.profile.id) cmd += "-f " + item.profile.id + " " + item.uri;
             else cmd += item.uri;
             if (GLib.spawn_command_line_async (cmd))
                 show_notification ("Starting " + item.uri);
-            else show_notification ("Error " + item.uri);
+            else show_notification ("Error " + item.uri);*/
+
+            var args = [udl,"-o",VIDEODIR + "/%(title)s.%(ext)s"];
+            if (item.profile.id) {
+                args.push ("-f");
+                args.push (item.profile.id);
+            }
+            args.push (item.uri);
+            spawn_async (args, Lang.bind (this, function (p,s,o){
+                show_notification ("Complete " + item.uri + s);
+            }));
+            show_notification ("Starting " + item.uri);
         }));
 
         this.prefs = new PrefsMenuItem ();
@@ -424,6 +435,21 @@ var SpawnPipe = new Lang.Class({
         return true;
     }
 });
+
+function spawn_async (args, callback) {
+    callback = callback || null;
+    let r, pid;
+    try {
+        [r, pid] = GLib.spawn_async (null, args, null,
+            GLib.SpawnFlags.SEARCH_PATH | GLib.SpawnFlags.DO_NOT_REAP_CHILD, null);
+    } catch (e) {
+        error (e.message);
+        return;
+    }
+    GLib.child_watch_add (GLib.PRIORITY_DEFAULT, pid, (p, s, o) => {
+        if (callback) callback (p, s, o);
+    });
+}
 
 function check_install_udl () {
     udl = GLib.find_program_in_path ("youtube-dl");
