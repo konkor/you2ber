@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<schemalist gettext-domain="gnome-shell-extensions-you2ber-daemon">
+<schemalist gettext-domain="org-konkor-you2ber">
 
   <schema id="org.konkor.you2ber" path="/org/konkor/you2ber/">
 
@@ -19,6 +19,12 @@
         <default>''</default>
         <summary>Video Folder</summary>
         <description>Folder to store video content</description>
+    </key>
+
+    <key type="b" name="playlists">
+      <default>false</default>
+      <summary>>Playlists</summary>
+      <description>Enable/Disable playlists (default - disabled)</description>
     </key>
 
   </schema>

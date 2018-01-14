@@ -37,7 +37,8 @@ const AUDIO_KEY = 'audio-folder';
 let AUDIODIR = "";
 const VIDEO_KEY = 'video-folder';
 let VIDEODIR = "";
-
+const PLAYLISTS_KEY = 'playlists';
+let PLAYLISTS = false;
 
 var U2PreferencesWidget = new Lang.Class({
     Name: 'U2PreferencesWidget',
@@ -45,20 +46,28 @@ var U2PreferencesWidget = new Lang.Class({
     _init: function (params) {
         this.parent (0.0, "you2ber preferences widget", false);
 
-        DEBUG = settings.get_boolean (DEBUG_KEY);
-        AUDIODIR = settings.get_string (AUDIO_KEY);
+        this.settings = Convenience.getSettings ();
+        DEBUG = this.settings.get_boolean (DEBUG_KEY);
+        AUDIODIR = this.settings.get_string (AUDIO_KEY);
         if (!AUDIODIR) AUDIODIR = Convenience.get_special_dir (GLib.UserDirectory.DIRECTORY_MUSIC);
-        VIDEODIR = settings.get_string (VIDEO_KEY);
+        VIDEODIR = this.settings.get_string (VIDEO_KEY);
         if (!VIDEODIR) VIDEODIR = Convenience.get_special_dir (GLib.UserDirectory.DIRECTORY_VIDEOS);
+        PLAYLISTS = this.settings.get_boolean (PLAYLISTS_KEY);
 
+        let label = null;
         this.notebook = new Gtk.Notebook ({expand:true});
 
-        this.audio = new PageAudio ();
+        this.general = new PageGeneral (this.settings);
+        this.notebook.add (this.general);
+        label = new Gtk.Label ({label: _("General")});
+        this.notebook.set_tab_label (this.general, label);
+
+        this.audio = new PageAudio (this.settings);
         this.notebook.add (this.audio);
         label = new Gtk.Label ({label: _("Audio")});
         this.notebook.set_tab_label (this.audio, label);
 
-        this.video = new PageVideo ();
+        this.video = new PageVideo (this.settings);
         this.notebook.add (this.video);
         label = new Gtk.Label ({label: _("Video")});
         this.notebook.set_tab_label (this.video, label);
@@ -67,11 +76,40 @@ var U2PreferencesWidget = new Lang.Class({
     }
 });
 
-const PageAudio = new Lang.Class({
+
+var PageGeneral = new Lang.Class({
+    Name: 'PageGeneral',
+    Extends: Gtk.Box,
+
+    _init: function (settings) {
+        let label;
+        this.parent ({orientation:Gtk.Orientation.VERTICAL, margin:6});
+        this.settings = settings;
+        this.border_width = 6;
+
+        label = new Gtk.Label ({label:
+            _("<b>Behaviour</b>"),use_markup:true,xalign:0,margin_top:12});
+        this.add (label);
+        this.cb_playlists = Gtk.CheckButton.new_with_label (_("Download whole playlists"));
+        this.cb_playlists.tooltip_text = _("Download playlists if links refer to it.");
+        this.cb_playlists.margin = 6;
+        this.add (this.cb_playlists);
+        this.cb_playlists.active = PLAYLISTS;
+        this.cb_playlists.connect ('toggled', Lang.bind (this, (o)=>{
+            PLAYLISTS = o.active;
+            this.settings.set_boolean (PLAYLISTS_KEY, PLAYLISTS);
+        }));
+
+        this.show_all ();
+    }
+});
+
+var PageAudio = new Lang.Class({
     Name: 'PageAudio',
     Extends: Gtk.Box,
 
-    _init: function () {
+    _init: function (settings) {
+        this.settings = settings;
         this.parent ({orientation:Gtk.Orientation.VERTICAL, margin:6});
         this.border_width = 6;
 
@@ -84,18 +122,19 @@ const PageAudio = new Lang.Class({
         this.chooser.connect ('file_set', Lang.bind (this, ()=>{
             AUDIODIR = this.chooser.get_filename ();
             this.chooser.tooltip_text = AUDIODIR;
-            settings.set_string (AUDIO_KEY, AUDIODIR);
+            this.settings.set_string (AUDIO_KEY, AUDIODIR);
         }));
 
         this.show_all ();
     }
 });
 
-const PageVideo = new Lang.Class({
+var PageVideo = new Lang.Class({
     Name: 'PageVideo',
     Extends: Gtk.Box,
 
-    _init: function () {
+    _init: function (settings) {
+        this.settings = settings;
         this.parent ({orientation:Gtk.Orientation.VERTICAL, margin:6});
         this.border_width = 6;
 
@@ -108,7 +147,7 @@ const PageVideo = new Lang.Class({
         this.chooser.connect ('file_set', Lang.bind (this, ()=>{
             VIDEODIR = this.chooser.get_filename ();
             this.chooser.tooltip_text = VIDEODIR;
-            settings.set_string (VIDEO_KEY, VIDEODIR);
+            this.settings.set_string (VIDEO_KEY, VIDEODIR);
         }));
 
         this.show_all ();
@@ -138,7 +177,6 @@ function error (msg) {
 
 function init() {
     Convenience.initTranslations ();
-    settings = Convenience.getSettings ();
 }
 
 function buildPrefsWidget() {

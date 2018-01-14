@@ -32,6 +32,8 @@ const AUDIO_KEY = 'audio-folder';
 let AUDIODIR = "";
 const VIDEO_KEY = 'video-folder';
 let VIDEODIR = "";
+const PLAYLISTS_KEY = 'playlists';
+let PLAYLISTS = false;
 
 const WATCH_TIMEOUT = 1000;
 
@@ -79,6 +81,7 @@ const U2Indicator = new Lang.Class({
         if (!AUDIODIR) AUDIODIR = Convenience.get_special_dir (GLib.UserDirectory.DIRECTORY_MUSIC);
         VIDEODIR = this.settings.get_string (VIDEO_KEY);
         if (!VIDEODIR) VIDEODIR = Convenience.get_special_dir (GLib.UserDirectory.DIRECTORY_VIDEOS);
+        PLAYLISTS = this.settings.get_boolean (PLAYLISTS_KEY);
     },
 
     add_watcher: function () {
@@ -139,15 +142,10 @@ const U2Indicator = new Lang.Class({
         this.menu.addMenuItem (this.item);
         this.item.connect ('audio', Lang.bind (this, function (item) {
             if (!installed || !item.uri) return;
-            /*var cmd = udl + " -o " + AUDIODIR + "/%(title)s.%(ext)s -x -f ";
-            if (item.profile.id) cmd += item.profile.id + " " + item.uri;
-            else cmd += "m4a " + item.uri;
-            if (GLib.spawn_command_line_async (cmd))
-                show_notification ("Starting " + item.uri);
-            else show_notification ("Error " + item.uri);*/
             var args = [udl,"-o",AUDIODIR + "/%(title)s.%(ext)s","-x","-f"];
             if (item.profile.id) args.push (item.profile.id);
             else args.push ("m4a");
+            if (!PLAYLISTS) args.push ("--no-playlist");
             args.push (item.uri);
             spawn_async (args, Lang.bind (this, function (p,s,o){
                 show_notification ("Complete " + item.uri + s);
@@ -156,18 +154,12 @@ const U2Indicator = new Lang.Class({
         }));
         this.item.connect ('video', Lang.bind (this, function (item) {
             if (!installed || !item.uri) return;
-            /*var cmd = udl + " -o " + VIDEODIR + "/%(title)s.%(ext)s ";
-            if (item.profile.id) cmd += "-f " + item.profile.id + " " + item.uri;
-            else cmd += item.uri;
-            if (GLib.spawn_command_line_async (cmd))
-                show_notification ("Starting " + item.uri);
-            else show_notification ("Error " + item.uri);*/
-
             var args = [udl,"-o",VIDEODIR + "/%(title)s.%(ext)s"];
             if (item.profile.id) {
                 args.push ("-f");
                 args.push (item.profile.id);
             }
+            if (!PLAYLISTS) args.push ("--no-playlist");
             args.push (item.uri);
             spawn_async (args, Lang.bind (this, function (p,s,o){
                 show_notification ("Complete " + item.uri + s);
@@ -274,9 +266,10 @@ const YoutubeItem = new Lang.Class ({
         let mi = new PopupMenu.PopupMenuItem ("All Available Languages");
         this.subtitles.menu.addMenuItem (mi);
         mi.connect ('activate', Lang.bind (this, (o)=>{
+            var pl = PLAYLISTS?"":"--no-playlist ";
             if (GLib.spawn_command_line_async (udl + " -o " + VIDEODIR +
                 "/%(title)s.%(ext)s --write-sub --sub-format best --all-subs " +
-                "--convert-subs srt --skip-download " + this.uri))
+                "--convert-subs srt --skip-download " + pl + this.uri))
                 show_notification ("Starting " + item.uri);
             else show_notification ("Error " + item.uri);
         }));
@@ -284,9 +277,10 @@ const YoutubeItem = new Lang.Class ({
             mi = new PopupMenu.PopupMenuItem (p);
             this.subtitles.menu.addMenuItem (mi);
             mi.connect ('activate', Lang.bind (this, (o)=>{
+                var pl = PLAYLISTS?"":"--no-playlist ";
                 if (GLib.spawn_command_line_async (udl + " -o " + VIDEODIR +
                     "/%(title)s.%(ext)s --write-sub --sub-format best --sub-lang " +
-                    o.label.text + " --convert-subs srt --skip-download " + this.uri))
+                    o.label.text + " --convert-subs srt --skip-download " + pl + this.uri))
                     show_notification ("Starting " + item.uri);
                 else show_notification ("Error " + item.uri);
             }));

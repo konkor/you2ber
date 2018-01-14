@@ -30,7 +30,7 @@ var Format = imports.format;
 String.prototype.format = Format.format;
 
 function initTranslations (domain) {
-    domain = domain || 'gnome-shell-extensions-you2ber';
+    domain = domain || 'org-konkor-you2ber';
 
     let localeDir = Gio.File.new_for_path (getCurrentFile()[1] + '/locale');
     if (localeDir.query_exists (null))
