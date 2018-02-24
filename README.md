@@ -1,4 +1,4 @@
-# [YOU2BER](https://extensions.gnome.org/extension/you2ber/) <img alt="logo" src="/data/icons/u2b.svg" align="right">
+# [YOU2BER](https://extensions.gnome.org/extension/you2ber/) <img alt="logo" src="/data/icons/u2b.png" align="right">
 **GNOME SHELL EXTENSION** for [youtube-dl](https://github.com/rg3/youtube-dl).
 -----
 
