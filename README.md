@@ -1,8 +1,8 @@
-# [YOU2BER](https://extensions.gnome.org/extension/you2ber/)
+# [YOU2BER](https://extensions.gnome.org/extension/you2ber/) <img alt="logo" src="/data/icons/u2b.svg" align="right">
 **GNOME SHELL EXTENSION** for [youtube-dl](https://github.com/rg3/youtube-dl).
 -----
 
-![screencast]()
+![screencast](/screenshots/screenshot.png)
 
 **YOU2BER** helps to download media content from online video services and convert to usable format.
 
@@ -60,4 +60,3 @@ wget https://github.com/konkor/you2ber/archive/master.zip
 
 ### Sources and binary packages
 * [GitHub master branch](https://github.com/konkor/you2ber/archive/master.zip)
-
