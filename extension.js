@@ -158,9 +158,17 @@ const U2Indicator = new Lang.Class({
             if (item.profile.id) {
                 args.push ("-f");
                 args.push (item.profile.id);
+            } else if (item.profile.auto) {
+                args.push ("-f");
+                if (item.profile.auto <=240) args.push ("bestvideo[height<="+ item.profile.auto +"][ext=webm][fps<=30]+worstaudio[ext=webm]/best[height<="+ item.profile.auto +"][ext=webm]/best[height<="+ item.profile.auto +"]");
+                else if (item.profile.auto <=720) args.push ("bestvideo[height<="+ item.profile.auto +"][ext=webm][fps<=30]+bestaudio[ext=webm]/best[height<="+ item.profile.auto +"][ext=webm]/best[height<="+ item.profile.auto +"]");
+                else args.push ("bestvideo[height<="+ item.profile.auto +"][ext=webm][fps<=30]+bestaudio/best[height<="+ item.profile.auto +"]");
             }
             if (!PLAYLISTS) args.push ("--no-playlist");
             args.push (item.uri);
+            var s = "";
+            args.forEach(p=>{s += p + " ";});
+            print (s);
             spawn_async (args, Lang.bind (this, function (p,s,o){
                 show_notification ("Complete " + item.uri + s);
             }));
@@ -299,6 +307,9 @@ const YoutubeItem = new Lang.Class ({
 
     get_profiles: function (text) {
         var ar = [], s = "", a = true, v = true, id = "";
+        var qs = [144,240,360,480,720,1080,1440,2160,4320];
+        var qd = ["Lowest","Mobile","Video CD","DVD","HD Ready","Full HD","2K Video","4K Video","8K Video"];
+        var q = [false,false,false,false,false,false,false,false,false];
         for (let i=0; i<text.length; i++) {
             if (text[i].length < 10) continue;
             ar = []; a = true; v = true; s = "";
@@ -318,6 +329,15 @@ const YoutubeItem = new Lang.Class ({
                 else ar[0] = "(v)";
                 ar.forEach (a=>{s += a + " ";});
                 if (a) this.profiles.push ({id:id,desc:s.trim(),audio:a,video:v});
+                if (s.indexOf(" 144p ") > -1) q[0] = true;
+                else if (s.indexOf(" 240p ") > -1) q[1] = true;
+                else if (s.indexOf(" 360p") > -1) q[2] = true;
+                else if (s.indexOf(" 480p") > -1) q[3] = true;
+                else if (s.indexOf(" 720p") > -1) q[4] = true;
+                else if (s.indexOf(" 1080p") > -1) q[5] = true;
+                else if (s.indexOf(" 1440p") > -1) q[6] = true;
+                else if (s.indexOf(" 2160p") > -1) q[7] = true;
+                else if (s.indexOf(" 4320p") > -1) q[8] = true;
             }
         }
         let mi = new QualityMenuItem ({id:"",desc:"Auto Profile",audio:true,video:true});
@@ -333,6 +353,16 @@ const YoutubeItem = new Lang.Class ({
             }));
         });
         if (this.profiles.length > 0) this.quality.actor.visible = true;
+        this.quality.menu.addMenuItem (new PopupMenu.PopupSeparatorMenuItem());
+        for (let i=0; i < q.length; i++) {
+            if (q[i]) {
+                mi = new QualityMenuItem ({id:"",desc:qs[i]+"p - "+qd[i],audio:true,video:true, auto:qs[i]});
+                this.quality.menu.addMenuItem (mi);
+                mi.connect ('select', Lang.bind (this, (o)=>{
+                    this.on_profile (o.profile);
+                }));
+            }
+        }
     },
 
     on_profile: function (profile) {
