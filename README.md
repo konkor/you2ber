@@ -4,9 +4,8 @@
 </p>
 
 # [YOU2BER](https://extensions.gnome.org/extension/you2ber/) <img alt="logo" src="/data/icons/u2b.png" align="right">
-**GNOME SHELL EXTENSION** for [youtube-dl](https://github.com/rg3/youtube-dl).
------
 
+<h2 align="center">GNOME SHELL EXTENSION for <a href="https://github.com/rg3/youtube-dl">youtube-dl</a></h2>
 <h2 align="center">Supporting YOU2BER</h2>
 
 YOU2BER is an GPLv3-licensed open source project focused on desktop users. It's an independent project with its ongoing development made possible entirely thanks to the support by these awesome [backers](https://github.com/konkor/you2ber/blob/master/BACKERS.md). You will also support my other interesting community projects. If you'd like to help the project and want to join to it, please consider:
@@ -32,9 +31,12 @@ Please, consider to support the project and make it better!
 **YOU2BER** helps to download media content from online video services and convert to usable format.
 
 ## Main Features
+* Quality presets up to 8K Video (4320p) with audio.
+* Audio extraction.
+* Video tracks downloading.
+* Subtitles downloading.
+* Custom mixing audio and video formats.
 * Clipboard support.
-* Audio extraction to _~/Music/youtube_ folder.
-* Video extraction to _~/Videos/youtube_ folder.
 
 ## How-to use
 1. Copy valid URI address to the clipboard buffer
@@ -62,7 +64,7 @@ _Behind the development for the Linux Desktop are ordinary people who spend a lo
 * [youtube-dl](https://github.com/rg3/youtube-dl)
 * Gnome Shell 3.14+
 
-### Recommends
+### Highly Recommends for mixing formats
 * ffmpeg (youtube-dl dependency for media manipulation)
 
 Linux installation:
