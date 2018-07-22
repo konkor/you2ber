@@ -408,28 +408,41 @@ const YoutubeItem = new Lang.Class ({
 
 const ProfileSubMenuItem = new Lang.Class({
     Name: 'ProfileSubMenuItem',
-    Extends: PopupMenu.PopupSubMenuMenuItem,
+    Extends: PopupMenu.PopupMenuSection,
 
     _init: function (id) {
+        this.parent ();
+        let label_text = "";
+        this._icon = new St.Icon({ style_class: 'popup-menu-icon' });
         if (id == CUSTOM_ID) {
-            this.default_profile = {id:id,desc:"Custom Quality",audio:true,video:true};
+            this.default_profile = {id:id,desc:"Custom",audio:true,video:true};
+            label_text = "Quality Preset";
+            this._icon.icon_name = "emblem-system-symbolic";
         } else if (id == AUTO_VIDEO_ID) {
-            this.default_profile = {id:id,desc:"Auto Video Profile",audio:true,video:true};
+            this.default_profile = {id:id,desc:"Auto",audio:true,video:true};
+            label_text = "Video Track Format";
+            this._icon.icon_name = "camera-video-symbolic";
         } else if (id == AUTO_AUDIO_ID) {
-            this.default_profile = {id:id,desc:"Auto Audio Profile",audio:true,video:true};
+            this.default_profile = {id:id,desc:"Auto",audio:true,video:true};
+            label_text = "Audio Track Format";
+            this._icon.icon_name = "audio-speakers-symbolic";
         } else this.default_profile = {id:"",desc:""};
-        this.parent (this.default_profile.desc, false);
         this.profile = this.default_profile;
+        this.label = new PopupMenu.PopupMenuItem (label_text, { reactive: false, can_focus: false });
+        //this.addMenuItem (this.label);
+        this.submenu = new PopupMenu.PopupSubMenuMenuItem (this.default_profile.desc, false);
+        this.addMenuItem (this.submenu);
+        this.submenu.actor.add_child (this._icon, { align: St.Align.END });
     },
 
     add_default: function () {
-        this.menu.removeAll ();
+        this.submenu.menu.removeAll ();
         if (this.default_profile.id != "") this.add_profile (this.default_profile);
     },
 
     add_profile: function (profile) {
         let mi = new QualityMenuItem (profile);
-        this.menu.addMenuItem (mi);
+        this.submenu.menu.addMenuItem (mi);
         mi.connect ('select', Lang.bind (this, (o)=>{
             this.on_profile (o.profile);
         }));
@@ -437,8 +450,8 @@ const ProfileSubMenuItem = new Lang.Class({
 
     on_profile: function (profile) {
         this.profile = profile;
-        this.label.text = profile.desc;
-        this.setSubmenuShown (false);
+        this.submenu.label.text = profile.desc;
+        this.submenu.setSubmenuShown (false);
         this.emit ('select');
     }
 });
