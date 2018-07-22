@@ -26,6 +26,12 @@ const LANGS = [
 "zh-hans","zh-hant","zu"
 ];
 
+const CUSTOM_ID = "-1";
+const AUTO_VIDEO_ID = "-2";
+const AUTO_AUDIO_ID = "-3";
+const NO_VIDEO_ID = "-4";
+const NO_AUDIO_ID = "-5";
+
 const DEBUG_KEY = 'debug';
 let DEBUG = false;
 const AUDIO_KEY = 'audio-folder';
@@ -155,14 +161,24 @@ const U2Indicator = new Lang.Class({
         this.item.connect ('video', Lang.bind (this, function (item) {
             if (!installed || !item.uri) return;
             var args = [udl,"-o",VIDEODIR + "/%(title)s.%(ext)s"];
-            if (item.profile.id) {
+            var auto, ap = item.audio.profile, vp = item.video.profile;
+            if (item.quality.profile.id != CUSTOM_ID) {
+                auto = item.quality.profile.auto;
                 args.push ("-f");
-                args.push (item.profile.id);
-            } else if (item.profile.auto) {
+                if (auto <=240) args.push ("bestvideo[height<="+ auto +"][ext=webm][fps<=30]+worstaudio[ext=webm]/best[height<="+ auto +"][ext=webm]/best[height<="+ auto +"]");
+                else if (auto <=720) args.push ("bestvideo[height<="+ auto +"][ext=webm][fps<=30]+bestaudio[ext=webm]/best[height<="+ auto +"][ext=webm]/best[height<="+ auto +"]");
+                else args.push ("bestvideo[height<="+ auto +"][ext=webm][fps<=30]+bestaudio/best[height<="+ auto +"]");
+            } else if (vp.id != AUTO_VIDEO_ID) {
                 args.push ("-f");
-                if (item.profile.auto <=240) args.push ("bestvideo[height<="+ item.profile.auto +"][ext=webm][fps<=30]+worstaudio[ext=webm]/best[height<="+ item.profile.auto +"][ext=webm]/best[height<="+ item.profile.auto +"]");
-                else if (item.profile.auto <=720) args.push ("bestvideo[height<="+ item.profile.auto +"][ext=webm][fps<=30]+bestaudio[ext=webm]/best[height<="+ item.profile.auto +"][ext=webm]/best[height<="+ item.profile.auto +"]");
-                else args.push ("bestvideo[height<="+ item.profile.auto +"][ext=webm][fps<=30]+bestaudio/best[height<="+ item.profile.auto +"]");
+                if (((ap.id == AUTO_AUDIO_ID)&&vp.audio) || (ap.id == NO_AUDIO_ID)) {
+                    args.push (vp.id);
+                } else {
+                    args.push (vp.id + "+" + ap.id);
+                }
+            } else if ((ap.id != NO_AUDIO_ID) && (ap.id != AUTO_AUDIO_ID)) {
+                args.push ("-f");
+                var ext = ap.desc.indexOf("webm")>-1?"webm":"mp4";
+                args.push ("best[ext="+ ext +"]/best+" + ap.id);
             }
             if (!PLAYLISTS) args.push ("--no-playlist");
             args.push (item.uri);
@@ -215,8 +231,21 @@ const YoutubeItem = new Lang.Class ({
         this.video_button = new St.Button ({ label: "Video", style_class: 'video-button', x_expand:true});
         box.add (this.video_button);
 
-        this.quality = new PopupMenu.PopupSubMenuMenuItem ("Auto Profile", false);
+        this.quality = new ProfileSubMenuItem (CUSTOM_ID);
         this.addMenuItem (this.quality);
+        this.video = new ProfileSubMenuItem (AUTO_VIDEO_ID);
+        this.addMenuItem (this.video);
+        this.audio = new ProfileSubMenuItem (AUTO_AUDIO_ID);
+        this.addMenuItem (this.audio);
+        this.quality.connect ('select', Lang.bind (this, (o)=>{
+            this.on_profile (o.profile);
+        }));
+        this.video.connect ('select', Lang.bind (this, (o)=>{
+            this.on_profile (o.profile);
+        }));
+        this.audio.connect ('select', Lang.bind (this, (o)=>{
+            this.on_profile (o.profile);
+        }));
         this.subtitles = new PopupMenu.PopupSubMenuMenuItem ("Subtitles", false);
         this.addMenuItem (this.subtitles);
 
@@ -298,7 +327,11 @@ const YoutubeItem = new Lang.Class ({
 
     get_quality: function (text) {
         this.quality.actor.visible = false;
-        this.quality.menu.removeAll ();
+        this.video.actor.visible = false;
+        this.audio.actor.visible = false;
+        this.quality.add_default ();
+        this.video.add_default ();
+        this.audio.add_default ();
         this.profiles = [];
         var pipe = new SpawnPipe ([udl,"-F",this.uri], null, Lang.bind (this, (stdout, err) => {
             if (stdout.length) this.get_profiles (stdout);
@@ -328,7 +361,7 @@ const YoutubeItem = new Lang.Class ({
                 else if (a) ar[0] = "(a)";
                 else ar[0] = "(v)";
                 ar.forEach (a=>{s += a + " ";});
-                if (a) this.profiles.push ({id:id,desc:s.trim(),audio:a,video:v});
+                this.profiles.push ({id:id,desc:s.trim(),audio:a,video:v});
                 if (s.indexOf(" 144p ") > -1) q[0] = true;
                 else if (s.indexOf(" 240p ") > -1) q[1] = true;
                 else if (s.indexOf(" 360p") > -1) q[2] = true;
@@ -340,36 +373,68 @@ const YoutubeItem = new Lang.Class ({
                 else if (s.indexOf(" 4320p") > -1) q[8] = true;
             }
         }
-        let mi = new QualityMenuItem ({id:"",desc:"Auto Profile",audio:true,video:true});
-        this.quality.menu.addMenuItem (mi);
-        mi.connect ('select', Lang.bind (this, (o)=>{
-            this.on_profile (o.profile);
-        }));
         this.profiles.forEach (p=>{
-            mi = new QualityMenuItem (p);
-            this.quality.menu.addMenuItem (mi);
-            mi.connect ('select', Lang.bind (this, (o)=>{
-                this.on_profile (o.profile);
-            }));
+            if (p.audio) this.audio.add_profile (p);
+            if (p.video) this.video.add_profile (p);
         });
-        if (this.profiles.length > 0) this.quality.actor.visible = true;
-        this.quality.menu.addMenuItem (new PopupMenu.PopupSeparatorMenuItem());
+        this.audio.add_profile ({id:NO_AUDIO_ID,desc:"No Audio", audio:false});
+        this.video.add_profile ({id:NO_VIDEO_ID,desc:"No Video", video:false});
+        //this.quality.menu.addMenuItem (new PopupMenu.PopupSeparatorMenuItem());
         for (let i=0; i < q.length; i++) {
             if (q[i]) {
-                mi = new QualityMenuItem ({id:"",desc:qs[i]+"p - "+qd[i],audio:true,video:true, auto:qs[i]});
-                this.quality.menu.addMenuItem (mi);
-                mi.connect ('select', Lang.bind (this, (o)=>{
-                    this.on_profile (o.profile);
-                }));
+                this.quality.add_profile ({id:"",desc:qs[i]+"p - "+qd[i],audio:true,video:true, auto:qs[i]});
             }
+        }
+        if (this.profiles.length > 0) {
+            this.quality.actor.visible = true;
+            this.on_profile (this.quality.profile);
         }
     },
 
     on_profile: function (profile) {
+        var custom = this.quality.profile.id == CUSTOM_ID;
+        this.video.actor.visible = custom;
+        this.audio.actor.visible = custom;
+
+        this.audio_button.visible = !(custom && !this.audio.profile.audio);
+        this.video_button.visible = !(custom && !this.video.profile.video);
+    }
+});
+
+const ProfileSubMenuItem = new Lang.Class({
+    Name: 'ProfileSubMenuItem',
+    Extends: PopupMenu.PopupSubMenuMenuItem,
+
+    _init: function (id) {
+        if (id == CUSTOM_ID) {
+            this.default_profile = {id:id,desc:"Custom Profile",audio:true,video:true};
+        } else if (id == AUTO_VIDEO_ID) {
+            this.default_profile = {id:id,desc:"Auto Video Profile",audio:true,video:true};
+        } else if (id == AUTO_AUDIO_ID) {
+            this.default_profile = {id:id,desc:"Auto Audio Profile",audio:true,video:true};
+        } else this.default_profile = {id:"",desc:""};
+        this.parent (this.default_profile.desc, false);
+        this.profile = this.default_profile;
+    },
+
+    add_default: function () {
+        this.menu.removeAll ();
+        if (this.default_profile.id != "") this.add_profile (this.default_profile);
+    },
+
+    add_profile: function (profile) {
+        let mi = new QualityMenuItem (profile);
+        this.menu.addMenuItem (mi);
+        mi.connect ('select', Lang.bind (this, (o)=>{
+            this.on_profile (o.profile);
+        }));
+    },
+
+    on_profile: function (profile) {
         this.profile = profile;
-        this.quality.label.text = profile.desc;
-        this.audio_button.visible = profile.audio;
-        this.video_button.visible = profile.video;
+        this.label.text = profile.desc;
+        this.setSubmenuShown (false);
+        this.emit ('select');
     }
 });
 
