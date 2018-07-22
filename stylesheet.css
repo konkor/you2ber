@@ -12,6 +12,12 @@
     border-radius: 0;
     padding: 6px;
 }
+.audio-button {
+    background-color: rgba(147,230,0,0.3);
+}
+.video-button {
+    background-color: rgba(28,153,213,0.3);
+}
 .audio-button:hover, .audio-button:focus {
     color: #323843;
     background-color: #93e600;
