@@ -185,9 +185,9 @@ const U2Indicator = new Lang.Class({
             }
             if (!PLAYLISTS) args.push ("--no-playlist");
             args.push (item.uri);
-            var s = "";
+            /*var s = "";
             args.forEach(p=>{s += p + " ";});
-            print (s);
+            print (s);*/
             spawn_async (args, Lang.bind (this, function (p,s,o){
                 show_notification ("Complete " + item.uri + s);
             }));
@@ -412,7 +412,7 @@ const ProfileSubMenuItem = new Lang.Class({
 
     _init: function (id) {
         if (id == CUSTOM_ID) {
-            this.default_profile = {id:id,desc:"Custom Profile",audio:true,video:true};
+            this.default_profile = {id:id,desc:"Custom Quality",audio:true,video:true};
         } else if (id == AUTO_VIDEO_ID) {
             this.default_profile = {id:id,desc:"Auto Video Profile",audio:true,video:true};
         } else if (id == AUTO_AUDIO_ID) {
