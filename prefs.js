@@ -39,6 +39,11 @@ const VIDEO_KEY = 'video-folder';
 let VIDEODIR = "";
 const PLAYLISTS_KEY = 'playlists';
 let PLAYLISTS = false;
+const QUALITY_KEY = 'preferred-quality';
+let QUALITY = 720;
+
+const qs = [144,240,360,480,720,1080,1440,2160,4320];
+const qd = ["Lowest","Mobile","Video CD","DVD","HD Ready","Full HD","2K Video","4K Video","8K Video"];
 
 var U2PreferencesWidget = new Lang.Class({
     Name: 'U2PreferencesWidget',
@@ -53,6 +58,7 @@ var U2PreferencesWidget = new Lang.Class({
         VIDEODIR = this.settings.get_string (VIDEO_KEY);
         if (!VIDEODIR) VIDEODIR = Convenience.get_special_dir (GLib.UserDirectory.DIRECTORY_VIDEOS);
         PLAYLISTS = this.settings.get_boolean (PLAYLISTS_KEY);
+        QUALITY = this.settings.get_int (QUALITY_KEY);
 
         let label = null;
         this.notebook = new Gtk.Notebook ({expand:true});
@@ -98,6 +104,27 @@ var PageGeneral = new Lang.Class({
         this.cb_playlists.connect ('toggled', Lang.bind (this, (o)=>{
             PLAYLISTS = o.active;
             this.settings.set_boolean (PLAYLISTS_KEY, PLAYLISTS);
+        }));
+
+        this.add (new Gtk.Label ({label:"<b>"+"Quality"+"</b>",use_markup:true,xalign:0,margin_top:8}));
+
+        let hbox = new Gtk.Box ({orientation:Gtk.Orientation.HORIZONTAL});
+        this.pack_start (hbox, false, false, 0);
+        hbox.add (new Gtk.Label ({label: "Preferred Quality"}));
+        this.combo = new Gtk.ComboBoxText ();
+        this.combo.append_text ("AUTO");
+        var id = 0, i = 1;
+        qs.forEach (s => {
+            this.combo.append_text (s.toString()+ "p");
+            if (s == QUALITY) id = i;
+            i++;
+        });
+        this.combo.active = id;
+        hbox.pack_end (this.combo, false, false, 0);
+        this.combo.connect ('changed', Lang.bind (this, (o)=>{
+            if (o.active == 0) QUALITY = 0;
+            else QUALITY = qs[o.active - 1];
+            this.settings.set_int (QUALITY_KEY, QUALITY);
         }));
 
         this.show_all ();

@@ -40,6 +40,8 @@ const VIDEO_KEY = 'video-folder';
 let VIDEODIR = "";
 const PLAYLISTS_KEY = 'playlists';
 let PLAYLISTS = false;
+const QUALITY_KEY = 'preferred-quality';
+let QUALITY = 720;
 
 const WATCH_TIMEOUT = 1000;
 
@@ -88,6 +90,7 @@ const U2Indicator = new Lang.Class({
         VIDEODIR = this.settings.get_string (VIDEO_KEY);
         if (!VIDEODIR) VIDEODIR = Convenience.get_special_dir (GLib.UserDirectory.DIRECTORY_VIDEOS);
         PLAYLISTS = this.settings.get_boolean (PLAYLISTS_KEY);
+        QUALITY = this.settings.get_int (QUALITY_KEY);
     },
 
     add_watcher: function () {
@@ -149,7 +152,7 @@ const U2Indicator = new Lang.Class({
         this.item.connect ('audio', Lang.bind (this, function (item) {
             if (!installed || !item.uri) return;
             var args = [udl,"-o",AUDIODIR + "/%(title)s.%(ext)s","-x","-f"];
-            if (item.profile.id) args.push (item.profile.id);
+            if (item.audio.profile.id != AUTO_AUDIO_ID) args.push (item.audio.profile.id);
             else args.push ("m4a");
             if (!PLAYLISTS) args.push ("--no-playlist");
             args.push (item.uri);
@@ -339,11 +342,11 @@ const YoutubeItem = new Lang.Class ({
     },
 
     get_profiles: function (text) {
-        var ar = [], s = "", a = true, v = true, id = "";
+        var ar = [], s = "", a = true, v = true, id = "", i;
         var qs = [144,240,360,480,720,1080,1440,2160,4320];
         var qd = ["Lowest","Mobile","Video CD","DVD","HD Ready","Full HD","2K Video","4K Video","8K Video"];
         var q = [false,false,false,false,false,false,false,false,false];
-        for (let i=0; i<text.length; i++) {
+        for (i=0; i<text.length; i++) {
             if (text[i].length < 10) continue;
             ar = []; a = true; v = true; s = "";
             text[i] = text[i].replace ("DASH","");
@@ -380,9 +383,11 @@ const YoutubeItem = new Lang.Class ({
         this.audio.add_profile ({id:NO_AUDIO_ID,desc:"No Audio", audio:false});
         this.video.add_profile ({id:NO_VIDEO_ID,desc:"No Video", video:false});
         //this.quality.menu.addMenuItem (new PopupMenu.PopupSeparatorMenuItem());
-        for (let i=0; i < q.length; i++) {
+        for (i=0; i < q.length; i++) {
             if (q[i]) {
-                this.quality.add_profile ({id:"",desc:qs[i]+"p - "+qd[i],audio:true,video:true, auto:qs[i]});
+                let p = {id:"", desc:qs[i]+"p - "+qd[i], audio:true, video:true, auto:qs[i]};
+                this.quality.add_profile (p);
+                if (p.auto<=QUALITY) this.quality.on_profile (p);
             }
         }
         if (this.profiles.length > 0) {

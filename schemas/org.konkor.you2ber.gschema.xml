@@ -23,8 +23,14 @@
 
     <key type="b" name="playlists">
       <default>false</default>
-      <summary>>Playlists</summary>
+      <summary>Playlists</summary>
       <description>Enable/Disable playlists (default - disabled)</description>
+    </key>
+
+    <key type="i" name="preferred-quality">
+      <default>720</default>
+      <summary>Quality</summary>
+      <description>Preferred Default Quality</description>
     </key>
 
   </schema>
