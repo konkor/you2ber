@@ -26,7 +26,9 @@ Please, consider to support the project and make it better!
   </big>
 </p>
 
-![screencast](/screenshots/screenshot.png)
+<!--special end-->
+
+<p align="center"><img alt="logo" src="/screenshots/screenshot.png"></p>
 
 **YOU2BER** helps to download media content from online video services and convert to usable format.
 
