@@ -1,5 +1,5 @@
 <svg xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" xmlns="http://www.w3.org/2000/svg" height="22" width="24" version="1.1" xmlns:cc="http://creativecommons.org/ns#" xmlns:dc="http://purl.org/dc/elements/1.1/" viewBox="0 0 6.3499997 5.8208335">
  <path d="m1.12 0.526c-0.57 0-1.03 0.459-1.03 1.03v2.4c0 0.57 0.459 1.03 1.03 1.03h4.12c0.57 0 1.03-0.459 1.03-1.03v-2.41c0-0.574-0.46-1.03-1.03-1.03zm1.39 1.02 2.07 1.18-2.07 1.26z" stroke-opacity=".484" fill-opacity=".659" stroke="#1f1f1f" stroke-width=".185" fill="#d4d4d4"/>
- <rect stroke-opacity=".771" rx=".132" height=".478" width="6.19" stroke="#666" y="6.61" x=".0741" stroke-width=".173" fill="none"/>
- <rect rx=".132" height=".478" width="1.32" y="6.61" x=".0741" fill="#fff"/>
+ <rect stroke-opacity=".771" rx=".132" height=".478" width="6.19" stroke="#666" y="5.24" x=".0741" stroke-width=".173" fill="none"/>
+ <rect rx=".132" height=".478" width="6.19" y="5.24" x=".0741" fill="#fff"/>
 </svg>

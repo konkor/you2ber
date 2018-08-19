@@ -43,14 +43,17 @@ let PLAYLISTS = false;
 const QUALITY_KEY = 'preferred-quality';
 let QUALITY = 720;
 
-const WATCH_TIMEOUT = 1000;
+const A_TIMEOUT = 500;
 
-let clipboard_watcher = 0;
+let animate_event = 0;
+let animate_idx = 0;
 let installID = 0;
 let installed = false;
 let udl = null;
 let last_text = "";
 let uris = [];
+let downloads = 0;
+let icons = [];
 
 const U2Indicator = new Lang.Class({
     Name: "U2Indicator",
@@ -66,6 +69,18 @@ const U2Indicator = new Lang.Class({
         this._icon_on = new St.Icon ({
             gicon:Gio.icon_new_for_string (EXTENSIONDIR + "/data/icons/u2b.svg")
         });
+        icons.push (new St.Icon ({
+            gicon:Gio.icon_new_for_string (EXTENSIONDIR + "/data/icons/025.svg")
+        }));
+        icons.push (new St.Icon ({
+            gicon:Gio.icon_new_for_string (EXTENSIONDIR + "/data/icons/050.svg")
+        }));
+        icons.push (new St.Icon ({
+            gicon:Gio.icon_new_for_string (EXTENSIONDIR + "/data/icons/075.svg")
+        }));
+        icons.push (new St.Icon ({
+            gicon:Gio.icon_new_for_string (EXTENSIONDIR + "/data/icons/100.svg")
+        }));
         this.status = new St.Icon ({style: 'icon-size: 20px'});
         this.status.gicon = this._icon_on.gicon;
         let _box = new St.BoxLayout();
@@ -80,7 +95,7 @@ const U2Indicator = new Lang.Class({
         }));
 
         this.build_menu ();
-        //this.add_watcher ();
+        if (downloads) this.add_animation ();
     },
 
     get_settings: function () {
@@ -93,15 +108,6 @@ const U2Indicator = new Lang.Class({
         QUALITY = this.settings.get_int (QUALITY_KEY);
     },
 
-    add_watcher: function () {
-        if (!installed) return;
-        if (clipboard_watcher) {
-            GLib.source_remove (clipboard_watcher);
-            clipboard_watcher = 0;
-        }
-        clipboard_watcher = GLib.timeout_add (100, WATCH_TIMEOUT, Lang.bind (this, this.get_clipboard));
-    },
-
     get_clipboard: function () {
         let self = this;
         Clipboard.get_text (CLIPBOARD_TYPE, function (c, text) {
@@ -110,6 +116,25 @@ const U2Indicator = new Lang.Class({
                 self.on_new_text ();
             }
         });
+        return true;
+    },
+
+    add_animation: function () {
+        if (animate_event) {
+            GLib.source_remove (animate_event);
+            animate_event = 0;
+        }
+        animate_event = GLib.timeout_add (100, A_TIMEOUT, Lang.bind (this, this.animate));
+    },
+
+    animate: function () {
+        if (!downloads) {
+            this.status.gicon = this._icon_on.gicon;
+            return false;
+        }
+        this.status.gicon = icons[animate_idx].gicon;
+        animate_idx++;
+        if (animate_idx > 3) animate_idx = 0;
         return true;
     },
 
@@ -158,8 +183,11 @@ const U2Indicator = new Lang.Class({
             args.push (item.uri);
             spawn_async (args, Lang.bind (this, function (p,s,o){
                 show_notification ("Complete " + item.uri + s);
+                downloads--;
             }));
             show_notification ("Starting " + item.uri);
+            downloads++;
+            this.add_animation ();
         }));
         this.item.connect ('video', Lang.bind (this, function (item) {
             if (!installed || !item.uri) return;
@@ -175,6 +203,10 @@ const U2Indicator = new Lang.Class({
                 args.push ("-f");
                 if (((ap.id == AUTO_AUDIO_ID)&&vp.audio) || (ap.id == NO_AUDIO_ID)) {
                     args.push (vp.id);
+                } else if ((ap.id == AUTO_AUDIO_ID) && !vp.audio) {
+                    var ext = "webm";
+                    if (vp.desc.indexOf("webm") == -1) ext = "m4a";
+                    args.push (vp.id + "+bestaudio[ext=" + ext + "]/bestaudio");
                 } else {
                     args.push (vp.id + "+" + ap.id);
                 }
@@ -185,13 +217,16 @@ const U2Indicator = new Lang.Class({
             }
             if (!PLAYLISTS) args.push ("--no-playlist");
             args.push (item.uri);
-            /*var s = "";
+            var s = "";
             args.forEach(p=>{s += p + " ";});
-            print (s);*/
+            print (s);
             spawn_async (args, Lang.bind (this, function (p,s,o){
                 show_notification ("Complete " + item.uri + s);
+                downloads--;
             }));
             show_notification ("Starting " + item.uri);
+            downloads++;
+            this.add_animation ();
         }));
 
         this.prefs = new PrefsMenuItem ();
@@ -206,8 +241,8 @@ const U2Indicator = new Lang.Class({
     },
 
     remove_events: function () {
-        if (clipboard_watcher != 0) GLib.source_remove (clipboard_watcher);
-        clipboard_watcher = 0;
+        if (animate_event != 0) GLib.source_remove (animate_event);
+        animate_event = 0;
     }
 });
 

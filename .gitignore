@@ -1,7 +1,7 @@
 *~
 *.bak
 *.tar.xz
-Makefile
+*.zip
 depcomp
 Makefile.in
 aclocal.m4
