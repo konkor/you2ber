@@ -153,7 +153,7 @@ const U2Indicator = new Lang.Class({
         let uri = new Soup.URI (text), res = true;
         if (!uri) res = false;
         if (res && uri.scheme != "https") res = false;
-        if (res && !(uri.host == "www.youtube.com" || uri.host == "youtu.be")) res = false;
+        if (res && !(uri.host.indexOf ("youtube.com") > -1 || uri.host == "youtu.be")) res = false;
         if (res && !uri.path) res = false;
         if (uri) uri = null;
         return res;
