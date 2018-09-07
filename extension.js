@@ -49,6 +49,7 @@ let animate_event = 0;
 let animate_idx = 0;
 let installID = 0;
 let installed = false;
+let updated = true;
 let udl = null;
 let last_text = "";
 let uris = [];
@@ -89,13 +90,26 @@ const U2Indicator = new Lang.Class({
         this.actor.connect('button-press-event', Lang.bind(this, function () {
             if (!this.menu.isOpen) return;
             if (!installed) check_install_udl ();
-            if (this.install) this.install.actor.visible = !installed;
+            if (this.install) this.install.actor.visible = !installed || !updated;
             this.get_settings ();
-            this.get_clipboard ();
+            if (installed) this.get_clipboard ();
         }));
 
         this.build_menu ();
         if (downloads) this.add_animation ();
+
+        if (installed) fetch ("https://rg3.github.io/youtube-dl/update/LATEST_VERSION",
+                               null, null, Lang.bind (this, (text, s) => {
+            if ((s == 200) && text) {
+                latest_version = text.split("\n")[0];
+            }
+            if (latest_version != current_version) {
+                updated = false;
+                this.install.label.set_text ("\u26a0 Update youtube-dl");
+            }
+            return false;
+        }));
+
     },
 
     get_settings: function () {
@@ -159,12 +173,14 @@ const U2Indicator = new Lang.Class({
         return res;
     },
 
-    _install: function () {
+    _install: function (update) {
         let r, pid;
         var pkexec = GLib.find_program_in_path ("pkexec");
         if (!pkexec) return;
-        spawn_async ([pkexec, EXTENSIONDIR + "/install_ydl.sh"], ()=>{
+        spawn_async ([pkexec, EXTENSIONDIR + "/install_ydl.sh", update?"update":"install"], ()=>{
             show_notification ("Installation complete.");
+            updated = true;
+            check_install_udl ();
         });
         if (installID) this.install.disconnect (installID);
     },
@@ -231,13 +247,12 @@ const U2Indicator = new Lang.Class({
 
         this.prefs = new PrefsMenuItem ();
         this.menu.addMenuItem (this.prefs);
-        if (!installed) {
-            this.install = new PopupMenu.PopupMenuItem ("\u26a0 Install youtube-dl");
-            this.menu.addMenuItem (this.install);
-            installID = this.install.connect ('activate', Lang.bind (this, function () {
-                this._install ();
-            }));
-        }
+
+        this.install = new PopupMenu.PopupMenuItem ("\u26a0 Install youtube-dl");
+        this.menu.addMenuItem (this.install);
+        installID = this.install.connect ('activate', Lang.bind (this, function () {
+            this._install (!updated);
+        }));
     },
 
     remove_events: function () {
@@ -593,9 +608,37 @@ function spawn_async (args, callback) {
     });
 }
 
+function fetch (url, agent, headers, callback) {
+    callback = callback || null;
+    agent = agent || Me.metadata.name + " ver." + Me.metadata.version;
+
+    let session = new Soup.SessionAsync({ user_agent: agent });
+    Soup.Session.prototype.add_feature.call (session, new Soup.ProxyResolverDefault());
+    let request = Soup.Message.new ("GET", url);
+    if (headers) headers.forEach (h=>{
+        request.request_headers.append (h[0], h[1]);
+    });
+    session.queue_message (request, (source, message) => {
+        if (callback)
+            callback (message.response_body.data?message.response_body.data.toString():"", message.status_code);
+    });
+}
+
+let cmd_out, info_out;
+function get_info_string (cmd) {
+    cmd_out = GLib.spawn_command_line_sync (cmd);
+    if (cmd_out[0]) info_out = cmd_out[1].toString().split("\n")[0];
+    if (info_out) return info_out;
+    return "";
+}
+
+let current_version = "";
+let latest_version = "";
 function check_install_udl () {
     udl = GLib.find_program_in_path ("youtube-dl");
-    if (udl) installed = true;
+    if (!udl) return;
+    installed = true;
+    latest_version = current_version = get_info_string (udl + " --version");
 }
 
 let notify_source = null;
