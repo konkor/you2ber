@@ -17,7 +17,7 @@ else
 	RMTMP = rm -rf ./_build/tmp
 endif
 
-all: extension
+all: zip-file
 
 clean:
 	rm -f ./schemas/gschemas.compiled
@@ -46,7 +46,7 @@ zip-file: _build
 	mv _build/$(UUID)$(VSTRING).zip ./
 	-rm -fR _build
 
-_build: all
+_build: extension
 	-rm -fR ./_build
 	mkdir -p _build
 	cp $(BASE_MODULES) _build
