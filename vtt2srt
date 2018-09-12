@@ -1,0 +1,129 @@
+#!/usr/bin/gjs
+/*
+ * Copyright (C) 2018 konkor <https://github.com/konkor>
+ *
+ * vtt2srt is free software: you can redistribute it and/or modify it
+ * under the terms of the GNU General Public License as published by the
+ * Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * vtt2srt is distributed in the hope that it will be useful, but
+ * WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ * See the GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License along
+ * with this program.  If not, see <http://www.gnu.org/licenses/>.
+*/
+
+const Gio = imports.gi.Gio;
+const GLib = imports.gi.GLib;
+const Mainloop = imports.mainloop;
+const Lang = imports.lang;
+
+const txt = "USAGE: [\"VTT\" |] vtt2srt [FILE_VTT] [OUT_FILE_SRT | > OUTPUT STREAM]";
+
+let stdin, stdout;
+let uris = [], output_file;
+let i, s;
+
+var Converter = new Lang.Class ({
+    Name: 'Converter',
+    Extends: Gio.Application,
+
+    _init: function () {
+        GLib.set_prgname ("vtt2srt");
+        this.parent ({
+            application_id: "org.konkor.vtt2srt",
+            flags: Gio.ApplicationFlags.HANDLES_COMMAND_LINE
+        });
+        GLib.set_application_name ("VTT Converter");
+    },
+
+    vfunc_startup: function() {
+        this.parent();
+    },
+    
+    vfunc_command_line: function(cmd) {
+        let text = this.get_stdin ();
+        if (text) text = this.convert (text);
+        for (i = 0; i < ARGV.length; i++) {
+            s = ARGV[i];
+            if ((s == "-h") || (s == "--help")) {
+                print (txt);
+                this.quit ();
+            } else if (this._is_vtt (s)) {
+                uris.push (s);
+            } else output_file = s;
+        }
+        if (text)
+            if (output_file) this.set_contents (output_file, text);
+            else print (text);
+        uris.forEach ((u)=>{
+            this.set_contents (this.srtname (u), this.convert (this.get_contents(u)));
+        });
+        return 0;
+    },
+    
+    convert: function (text) {
+        let srt = "", index = 1, time = false;
+        text.split ("\n").forEach ((s)=>{
+            s = s.replace ("\r","");
+            if ((s.length == 0) && time) {
+                srt += "\n";
+                time = false;
+                index++;
+            } else if (!time && this.is_time (s)) {
+                time = true;
+                srt += index + "\n" + s.replace (/\./gi,",") + "\n";
+            } else if ((s.length > 0) && time) {
+                srt += s + "\n";
+            }
+        });
+        return srt;
+    },
+    
+    is_time: function (text) {
+        if (text.length < 27) return false;
+        if (text.indexOf (" --> ") == -1) return false;
+        if (text.indexOf (":") < 1) return false;
+        if (text.indexOf (".") < 1) return false;
+        return true;
+    },
+    
+    get_contents: function (filename) {
+        let [res,data] = GLib.file_get_contents (filename);
+        if (res) return data.toString ();
+        return "";
+    },
+
+    set_contents: function (filename, text) {
+        //if (uris.length == 1 && !output_file) print (text); 
+        return GLib.file_set_contents (filename, text);
+    },
+    
+    srtname: function (filename) {
+        if (uris.length < 2 && output_file) return output_file;
+        return filename.toLowerCase().replace (".vtt",".srt");
+    },
+    
+    _is_vtt: function (filename) {
+        if (!filename) return false;
+        if (!filename.toLowerCase().endsWith(".vtt")) return false;
+        let file = Gio.File.new_for_path (filename);
+        if (!file.query_exists (null)) return false;
+        return true;
+    },
+    
+    get_stdin: function () {
+        let s = "";
+        let channel = GLib.IOChannel.unix_new(0);
+        if (channel.get_flags() != GLib.IOFlags.IS_READABLE) return s;
+        let [res, text] = channel.read_to_end();
+        if (text) s = text.toString();
+        return s;
+    }
+});
+
+let app = new Converter ();
+app.run (ARGV);
