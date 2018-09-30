@@ -29,6 +29,16 @@ const Gettext = imports.gettext;
 var Format = imports.format;
 String.prototype.format = Format.format;
 
+const LANGS = [
+"af","am","ar","az","be","bg","bn","bs","ca","ceb","co","cs","cy","da","de","el","en",
+"eo","es","et","eu","fa","fi","fil","fr","fy","ga","gd","gl","gu","ha","haw","hi","hmn",
+"hr","ht","hu","hy","id","ig","is","it","iw","ja","jv","ka","kk","km","kn","ko","ku",
+"ky","la","lb","lo","lt","lv","mg","mi","mk","ml","mn","mr","ms","mt","my","ne","nl",
+"no","ny","pa","pl","ps","pt","pt-br","ro","ru","sd","si","sk","sl","sm","sn","so","sq",
+"sr","st","su","sv","sw","ta","te","tg","th","tr","uk","ur","uz","vi","xh","yi","yo",
+"zh-hans","zh-hant","zu"
+];
+
 function initTranslations (domain) {
     domain = domain || 'org-konkor-you2ber';
 

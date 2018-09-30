@@ -33,5 +33,11 @@
       <description>Preferred Default Quality</description>
     </key>
 
+    <key type="s" name="language">
+        <default>'en'</default>
+        <summary>Default Language</summary>
+        <description>Default Language</description>
+    </key>
+
   </schema>
 </schemalist>

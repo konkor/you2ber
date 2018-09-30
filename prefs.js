@@ -20,6 +20,7 @@
  */
 
 const Lang = imports.lang;
+const GObject = imports.gi.GObject;
 const GLib = imports.gi.GLib;
 const Gio = imports.gi.Gio;
 const Gtk = imports.gi.Gtk;
@@ -41,6 +42,8 @@ const PLAYLISTS_KEY = 'playlists';
 let PLAYLISTS = false;
 const QUALITY_KEY = 'preferred-quality';
 let QUALITY = 720;
+const LANGUAGE_KEY = 'language';
+let LANGUAGE = "en";
 
 const qs = [144,240,360,480,720,1080,1440,2160,4320];
 const qd = ["Lowest","Mobile","Video CD","DVD","HD Ready","Full HD","2K Video","4K Video","8K Video"];
@@ -59,6 +62,9 @@ var U2PreferencesWidget = new Lang.Class({
         if (!VIDEODIR) VIDEODIR = Convenience.get_special_dir (GLib.UserDirectory.DIRECTORY_VIDEOS);
         PLAYLISTS = this.settings.get_boolean (PLAYLISTS_KEY);
         QUALITY = this.settings.get_int (QUALITY_KEY);
+        LANGUAGE = this.settings.get_string (LANGUAGE_KEY);
+        if (Convenience.LANGS.indexOf (LANGUAGE) == -1)
+            LANGUAGE = "en";
 
         let label = null;
         this.notebook = new Gtk.Notebook ({expand:true});
@@ -77,6 +83,11 @@ var U2PreferencesWidget = new Lang.Class({
         this.notebook.add (this.video);
         label = new Gtk.Label ({label: _("Video")});
         this.notebook.set_tab_label (this.video, label);
+
+        this.subtitles = new PageSubtitles (this.settings);
+        this.notebook.add (this.subtitles);
+        label = new Gtk.Label ({label: _("Subtitles")});
+        this.notebook.set_tab_label (this.subtitles, label);
 
         this.notebook.show_all ();
     }
@@ -142,7 +153,7 @@ var PageAudio = new Lang.Class({
 
         this.add (new Gtk.Label ({label: _("<b>Audio Folder</b>"), use_markup:true, xalign:0, margin_top:12}));
         this.chooser = new Gtk.FileChooserButton ({title: _("Select folder"),
-                           action: Gtk.FileChooserAction.SELECT_FOLDER});
+                           action: Gtk.FileChooserAction.SELECT_FOLDER, margin:6});
         this.chooser.set_current_folder (AUDIODIR);
         this.chooser.tooltip_text = AUDIODIR;
         this.pack_start (this.chooser, false, true, 0);
@@ -167,7 +178,7 @@ var PageVideo = new Lang.Class({
 
         this.add (new Gtk.Label ({label: _("<b>Video Folder</b>"), use_markup:true, xalign:0, margin_top:12}));
         this.chooser = new Gtk.FileChooserButton ({title: _("Select folder"),
-                           action: Gtk.FileChooserAction.SELECT_FOLDER});
+                           action: Gtk.FileChooserAction.SELECT_FOLDER, margin:6});
         this.chooser.set_current_folder (VIDEODIR);
         this.chooser.tooltip_text = VIDEODIR;
         this.pack_start (this.chooser, false, true, 0);
@@ -175,6 +186,41 @@ var PageVideo = new Lang.Class({
             VIDEODIR = this.chooser.get_filename ();
             this.chooser.tooltip_text = VIDEODIR;
             this.settings.set_string (VIDEO_KEY, VIDEODIR);
+        }));
+
+        this.show_all ();
+    }
+});
+
+var PageSubtitles = new Lang.Class({
+    Name: 'PageSubtitles',
+    Extends: Gtk.Box,
+
+    _init: function (settings) {
+        this.settings = settings;
+        this.parent ({orientation:Gtk.Orientation.VERTICAL, margin:6});
+        this.border_width = 6;
+
+        this.add (new Gtk.Label ({label: _("<b>Preferred language for auto-generated subtitles</b>"), use_markup:true, xalign:0, margin_top:12}));
+        this.store = new Gtk.ListStore ();
+        this.store.set_column_types ([GObject.TYPE_STRING]);
+        this.completion = new Gtk.EntryCompletion ();
+        this.completion.set_model (this.store);
+        this.completion.set_text_column (0);
+        Convenience.LANGS.forEach ( l => {
+            this.store.set (this.store.append (), [0], [l]);
+        });
+        this.entry = new Gtk.Entry ();
+        this.entry.text = LANGUAGE;
+        this.entry.tooltip_text = "Input code page like en, de, fr...";
+        this.entry.set_completion (this.completion);
+        this.pack_start (this.entry, false, false, 12);
+        this.entry.connect ('changed', Lang.bind (this, (o)=>{
+            var s = o.text.trim().toLowerCase();
+            if (!s) return;
+            if (Convenience.LANGS.indexOf (s) > -1) {
+                this.settings.set_string (LANGUAGE_KEY, s);
+            }
         }));
 
         this.show_all ();
