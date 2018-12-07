@@ -1,30 +1,31 @@
 .y2b-menu {
-    min-width: 320px;
+  min-width: 320px;
 }
 
 .y2b-item {
-    padding-top: 8px;
-    padding-bottom: 8px;
+  padding-top: 8px;
+  padding-bottom: 8px;
 }
 
 .audio-button, .video-button {
-    font-weight: bold;
-    border-radius: 0;
-    padding: 6px;
+  font-weight: bold;
+  border-radius: 0;
+  padding: 6px;
+  min-width: 120px;
 }
 .audio-button {
-    background-color: rgba(147,230,0,0.3);
+  background-color: rgba(147,230,0,0.3);
 }
 .video-button {
-    background-color: rgba(28,153,213,0.3);
+  background-color: rgba(28,153,213,0.3);
 }
 .audio-button:hover, .audio-button:focus {
-    color: #323843;
-    background-color: #93e600;
-    border: none;
+  color: #323843;
+  background-color: #93e600;
+  border: none;
 }
 .video-button:hover, .video-button:focus {
-    color: #323843;
-    background-color: #1c99d5;
-    border: none;
+  color: #323843;
+  background-color: #1c99d5;
+  border: none;
 }
