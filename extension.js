@@ -58,8 +58,8 @@ const U2Indicator = new Lang.Class({
         this.get_settings ();
 
         installed = Convenience.check_install_ydl ();
-        if (!installed) Convenience.install_ydl (this.installation_cb);
-        else Convenience.check_update_ydl (this.version_cb);
+        if (!installed) Convenience.install_ydl (Lang.bind (this, this.installation_cb));
+        else Convenience.check_update_ydl (Lang.bind (this, this.version_cb));
         ydl = Convenience.ydl;
         this._icon_on = new St.Icon ({
             gicon:Gio.icon_new_for_string (EXTENSIONDIR + "/data/icons/u2b.svg")
@@ -115,11 +115,12 @@ const U2Indicator = new Lang.Class({
       show_notification (s);
       updated = true;
       ydl = Convenience.ydl;
+      if (this.install) this.install.actor.visible = !installed;
     },
 
     version_cb: function (state) {
       updated = state;
-      if (!updated) Convenience.install_ydl (this.installation_cb);
+      if (!updated) Convenience.install_ydl (Lang.bind (this, this.installation_cb));
     },
 
     get_clipboard: function () {
