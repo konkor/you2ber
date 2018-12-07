@@ -21,6 +21,7 @@
  */
 
 const Lang = imports.lang;
+const ByteArray = imports.byteArray;
 const GLib = imports.gi.GLib;
 const Gio = imports.gi.Gio;
 const Soup = imports.gi.Soup;
@@ -29,7 +30,7 @@ const Gettext = imports.gettext;
 var Format = imports.format;
 String.prototype.format = Format.format;
 
-const LANGS = [
+var LANGS = [
 "af","am","ar","az","be","bg","bn","bs","ca","ceb","co","cs","cy","da","de","el","en",
 "eo","es","et","eu","fa","fi","fil","fr","fy","ga","gd","gl","gu","ha","haw","hi","hmn",
 "hr","ht","hu","hy","id","ig","is","it","iw","ja","jv","ka","kk","km","kn","ko","ku",
@@ -87,7 +88,7 @@ function fetch (url, agent, headers, callback) {
   });
 }
 
-let ydl = "";
+var ydl = "";
 let current_version = "";
 let latest_version = "";
 function check_install_ydl () {

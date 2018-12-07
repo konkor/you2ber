@@ -288,7 +288,7 @@ const YoutubeItem = new Lang.Class ({
     this.subtitles = new PopupMenu.PopupSubMenuMenuItem ("Subtitles", false);
     let icon = new St.Icon({ style_class: 'popup-menu-icon' });
     icon.icon_name = "format-text-underline-symbolic";
-    this.subtitles.actor.add_child (icon, { align: St.Align.END });
+    this.subtitles.actor.add_child (icon);
     this.addMenuItem (this.subtitles);
 
     this.audio_button.connect ('clicked', Lang.bind (this, function () {
@@ -484,7 +484,7 @@ const ProfileSubMenuItem = new Lang.Class({
     //this.addMenuItem (this.label);
     this.submenu = new PopupMenu.PopupSubMenuMenuItem (this.default_profile.desc, false);
     this.addMenuItem (this.submenu);
-    this.submenu.actor.add_child (this._icon, { align: St.Align.END });
+    this.submenu.actor.add_child (this._icon);
   },
 
   add_default: function () {
