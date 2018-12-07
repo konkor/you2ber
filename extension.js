@@ -39,10 +39,9 @@ const A_TIMEOUT = 500;
 
 let animate_event = 0;
 let animate_idx = 0;
-let installID = 0;
 let installed = false;
 let updated = true;
-let udl = null;
+let ydl = "";
 let last_text = "";
 let uris = [];
 let downloads = 0;
@@ -58,7 +57,10 @@ const U2Indicator = new Lang.Class({
         this.settings = Convenience.getSettings();
         this.get_settings ();
 
-        check_install_udl ();
+        installed = Convenience.check_install_ydl ();
+        if (!installed) Convenience.install_ydl (this.installation_cb);
+        else Convenience.check_update_ydl (this.version_cb);
+        ydl = Convenience.ydl;
         this._icon_on = new St.Icon ({
             gicon:Gio.icon_new_for_string (EXTENSIONDIR + "/data/icons/u2b.svg")
         });
@@ -81,27 +83,16 @@ const U2Indicator = new Lang.Class({
         this.actor.add_actor (_box);
         this.actor.connect('button-press-event', Lang.bind(this, function () {
             if (!this.menu.isOpen) return;
-            if (!installed) check_install_udl ();
-            if (this.install) this.install.actor.visible = !installed || !updated;
+            if (!installed) installed = Convenience.check_install_ydl ();
+            if (this.install) {
+              this.install.actor.visible = !installed || !updated;
+            }
             this.get_settings ();
             if (installed) this.get_clipboard ();
         }));
 
         this.build_menu ();
         if (downloads) this.add_animation ();
-
-        if (installed) fetch ("https://rg3.github.io/youtube-dl/update/LATEST_VERSION",
-                               null, null, Lang.bind (this, (text, s) => {
-            if ((s == 200) && text) {
-                latest_version = text.split("\n")[0];
-            }
-            if (latest_version != current_version) {
-                updated = false;
-                this.install.label.set_text ("\u26a0 Update youtube-dl");
-            }
-            return false;
-        }));
-
     },
 
     get_settings: function () {
@@ -115,6 +106,20 @@ const U2Indicator = new Lang.Class({
         LANGUAGE = this.settings.get_string (LANGUAGE_KEY);
         if (Convenience.LANGS.indexOf (LANGUAGE) == -1)
             LANGUAGE = "en";
+    },
+
+    installation_cb: function () {
+      let s = updated ? "Installation" : "Updating";
+      installed = !!Convenience.ydl;
+      s = installed ? s + " complete." : s + " failed.";
+      show_notification (s);
+      updated = true;
+      ydl = Convenience.ydl;
+    },
+
+    version_cb: function (state) {
+      updated = state;
+      if (!updated) Convenience.install_ydl (this.installation_cb);
     },
 
     get_clipboard: function () {
@@ -168,18 +173,6 @@ const U2Indicator = new Lang.Class({
         return res;
     },
 
-    _install: function (update) {
-        let r, pid;
-        var pkexec = GLib.find_program_in_path ("pkexec");
-        if (!pkexec) return;
-        spawn_async ([pkexec, EXTENSIONDIR + "/install_ydl.sh", update?"update":"install"], ()=>{
-            show_notification ("Installation complete.");
-            updated = true;
-            check_install_udl ();
-        });
-        if (installID) this.install.disconnect (installID);
-    },
-
     build_menu: function () {
         this.menu.removeAll ();
 
@@ -187,7 +180,7 @@ const U2Indicator = new Lang.Class({
         this.menu.addMenuItem (this.item);
         this.item.connect ('audio', Lang.bind (this, function (item) {
             if (!installed || !item.uri) return;
-            var args = [udl,"-o",AUDIODIR + "/%(title)s.%(ext)s","-x","-f"];
+            var args = [ydl,"-o",AUDIODIR + "/%(title)s.%(ext)s","-x","-f"];
             if (item.audio.profile.id != AUTO_AUDIO_ID) args.push (item.audio.profile.id);
             else args.push ("m4a");
             if (!PLAYLISTS) args.push ("--no-playlist");
@@ -202,7 +195,7 @@ const U2Indicator = new Lang.Class({
         }));
         this.item.connect ('video', Lang.bind (this, function (item) {
             if (!installed || !item.uri) return;
-            var args = [udl,"-o",VIDEODIR + "/%(title)s.%(ext)s"];
+            var args = [ydl,"-o",VIDEODIR + "/%(title)s.%(ext)s"];
             var auto, ap = item.audio.profile, vp = item.video.profile;
             if (item.quality.profile.id != CUSTOM_ID) {
                 auto = item.quality.profile.auto;
@@ -243,11 +236,8 @@ const U2Indicator = new Lang.Class({
         this.prefs = new PrefsMenuItem ();
         this.menu.addMenuItem (this.prefs);
 
-        this.install = new PopupMenu.PopupMenuItem ("\u26a0 Install youtube-dl");
+        this.install = new PopupMenu.PopupMenuItem ("\u26a0 Installing youtube-dl...", {reactive: false});
         this.menu.addMenuItem (this.install);
-        installID = this.install.connect ('activate', Lang.bind (this, function () {
-            this._install (!updated);
-        }));
     },
 
     remove_events: function () {
@@ -323,8 +313,8 @@ const YoutubeItem = new Lang.Class ({
     set_uri: function (uri) {
         this.uri = uri;
         this.set_text (uri);
-        if (!udl) return;
-        var pipe = new SpawnPipe ([udl,"-e",this.uri], null, Lang.bind (this, (stdout, err) => {
+        if (!ydl) return;
+        var pipe = new SpawnPipe ([ydl,"-e",this.uri], null, Lang.bind (this, (stdout, err) => {
             if (stdout.length) this.set_text (stdout[0]);
             else if (err) this.set_text (err);
         }));
@@ -336,7 +326,7 @@ const YoutubeItem = new Lang.Class ({
         this.subtitles.actor.visible = false;
         this.subtitles.menu.removeAll ();
         this.subs = []; this.caps = [];
-        var pipe = new SpawnPipe ([udl,"--list-subs",this.uri], null, Lang.bind (this, (stdout, err) => {
+        var pipe = new SpawnPipe ([ydl,"--list-subs",this.uri], null, Lang.bind (this, (stdout, err) => {
             if (stdout.length) this.get_subs (stdout);
         }));
     },
@@ -355,7 +345,7 @@ const YoutubeItem = new Lang.Class ({
         this.subtitles.menu.addMenuItem (mi);
         mi.connect ('activate', Lang.bind (this, (o)=>{
             var pl = PLAYLISTS?"":"--no-playlist ";
-            if (GLib.spawn_command_line_async (udl + " -o " + VIDEODIR +
+            if (GLib.spawn_command_line_async (ydl + " -o " + VIDEODIR +
                 "/%(title)s.%(ext)s --write-auto-sub --sub-lang " + LANGUAGE +
                 " --sub-format best " +
                 "--convert-subs srt --skip-download " + pl + this.uri))
@@ -367,7 +357,7 @@ const YoutubeItem = new Lang.Class ({
             this.subtitles.menu.addMenuItem (mi);
             mi.connect ('activate', Lang.bind (this, (o)=>{
                 var pl = PLAYLISTS?"":"--no-playlist ";
-                if (GLib.spawn_command_line_async (udl + " -o " + VIDEODIR +
+                if (GLib.spawn_command_line_async (ydl + " -o " + VIDEODIR +
                     "/%(title)s.%(ext)s --write-sub --sub-format best --all-subs " +
                     "--convert-subs srt --skip-download " + pl + this.uri))
                     show_notification ("Starting " + this.uri);
@@ -379,7 +369,7 @@ const YoutubeItem = new Lang.Class ({
             this.subtitles.menu.addMenuItem (mi);
             mi.connect ('activate', Lang.bind (this, (o)=>{
                 var pl = PLAYLISTS?"":"--no-playlist ";
-                if (GLib.spawn_command_line_async (udl + " -o " + VIDEODIR +
+                if (GLib.spawn_command_line_async (ydl + " -o " + VIDEODIR +
                     "/%(title)s.%(ext)s --write-sub --sub-format best --sub-lang " +
                     o.label.text + " --convert-subs srt --skip-download " + pl + this.uri))
                     show_notification ("Starting " + this.uri);
@@ -397,7 +387,7 @@ const YoutubeItem = new Lang.Class ({
         this.video.add_default ();
         this.audio.add_default ();
         this.profiles = [];
-        var pipe = new SpawnPipe ([udl,"-F",this.uri], null, Lang.bind (this, (stdout, err) => {
+        var pipe = new SpawnPipe ([ydl,"-F",this.uri], null, Lang.bind (this, (stdout, err) => {
             if (stdout.length) this.get_profiles (stdout);
         }));
     },
@@ -617,39 +607,6 @@ function spawn_async (args, callback) {
     GLib.child_watch_add (GLib.PRIORITY_DEFAULT, pid, (p, s, o) => {
         if (callback) callback (p, s, o);
     });
-}
-
-function fetch (url, agent, headers, callback) {
-    callback = callback || null;
-    agent = agent || Me.metadata.name + " ver." + Me.metadata.version;
-
-    let session = new Soup.SessionAsync({ user_agent: agent });
-    Soup.Session.prototype.add_feature.call (session, new Soup.ProxyResolverDefault());
-    let request = Soup.Message.new ("GET", url);
-    if (headers) headers.forEach (h=>{
-        request.request_headers.append (h[0], h[1]);
-    });
-    session.queue_message (request, (source, message) => {
-        if (callback)
-            callback (message.response_body.data?message.response_body.data.toString():"", message.status_code);
-    });
-}
-
-let cmd_out, info_out;
-function get_info_string (cmd) {
-    cmd_out = GLib.spawn_command_line_sync (cmd);
-    if (cmd_out[0]) info_out = cmd_out[1].toString().split("\n")[0];
-    if (info_out) return info_out;
-    return "";
-}
-
-let current_version = "";
-let latest_version = "";
-function check_install_udl () {
-    udl = GLib.find_program_in_path ("youtube-dl");
-    if (!udl) return;
-    installed = true;
-    latest_version = current_version = get_info_string (udl + " --version");
 }
 
 let notify_source = null;

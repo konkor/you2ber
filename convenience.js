@@ -71,6 +71,97 @@ function getSettings (schema) {
     return new Gio.Settings({ settings_schema: schemaObj });
 }
 
+function fetch (url, agent, headers, callback) {
+    callback = callback || null;
+    agent = agent || "You2ber (GNU/Linux)";
+
+    let session = new Soup.SessionAsync({ user_agent: agent });
+    Soup.Session.prototype.add_feature.call (session, new Soup.ProxyResolverDefault());
+    let request = Soup.Message.new ("GET", url);
+    if (headers) headers.forEach (h=>{
+        request.request_headers.append (h[0], h[1]);
+    });
+    session.queue_message (request, (source, message) => {
+        if (callback)
+            callback (message.response_body_data.get_data (), message.status_code);
+    });
+}
+
+let ydl = "";
+let current_version = "";
+let latest_version = "";
+function check_install_ydl () {
+  print ("check_install_ydl");
+  let path = get_user_bin_dir ();
+  path = GLib.build_filenamev ([path,"youtube-dl"]);
+  let file = Gio.File.new_for_path (path);
+  if (!file.query_exists (null))
+    return false;
+  let info = file.query_info ("*", 0, null);
+  if (!info.get_attribute_boolean (Gio.FILE_ATTRIBUTE_ACCESS_CAN_EXECUTE)) {
+    info.set_attribute_boolean (Gio.FILE_ATTRIBUTE_ACCESS_CAN_EXECUTE, true);
+    let cmd = GLib.find_program_in_path ("chmod");
+    if (!cmd) return false;
+    GLib.spawn_command_line_sync (cmd + " a+rx " + path);
+    if (!info.get_attribute_boolean (Gio.FILE_ATTRIBUTE_ACCESS_CAN_EXECUTE))
+      return false;
+  }
+  ydl = path;
+  latest_version = current_version = get_info_string (ydl + " --version");
+
+  return true;
+}
+
+function install_ydl (callback) {
+  print ("install_ydl");
+  fetch ("https://yt-dl.org/downloads/latest/youtube-dl",
+    "You2ber (GNU/Linux)", null, Lang.bind (this, (data, s) => {
+      if ((s == 200) && data) {
+        let file = Gio.File.new_for_path (get_user_bin_dir () + "/youtube-dl");
+        file.replace_contents_bytes_async (
+          data, null, false, Gio.FileCreateFlags.REPLACE_DESTINATION, null, (o, res) => {
+            file.replace_contents_finish (res);
+            check_install_ydl ();
+            if (callback) callback ();
+          }
+        );
+      }
+      return false;
+  }));
+  return true;
+}
+
+function check_update_ydl (callback) {
+  print ("check_update_ydl");
+  fetch ("https://rg3.github.io/youtube-dl/update/LATEST_VERSION",
+    "You2ber (GNU/Linux)", null, Lang.bind (this, (text, s) => {
+      if ((s == 200) && text) {
+        latest_version = bytesToString (text).toString().split("\n")[0];
+      }
+      if (callback) callback (latest_version == current_version);
+      return false;
+  }));
+}
+
+function get_user_bin_dir () {
+  let path = GLib.build_filenamev ([GLib.get_home_dir (), ".local/bin"]);
+  if (!GLib.file_test (path, GLib.FileTest.EXISTS))
+    GLib.mkdir_with_parents (path, 484);
+  return path;
+}
+
+function bytesToString (array) {
+    return array instanceof Uint8Array ? ByteArray.toString (array) : array;
+}
+
+let cmd_out, info_out;
+function get_info_string (cmd) {
+    cmd_out = GLib.spawn_command_line_sync (cmd);
+    if (cmd_out[0]) info_out = bytesToString (cmd_out[1]).toString().split("\n")[0];
+    if (info_out) return info_out;
+    return "";
+}
+
 function getCurrentFile () {
     let stack = (new Error()).stack;
 
@@ -122,5 +213,3 @@ function print_msg (domain, source, output) {
         domain_color[domain],ds,domain_name[domain],source,output));
     else log ("(%s) [you2ber][%s] %s".format (domain_name[domain], source, output));
 }
-
-

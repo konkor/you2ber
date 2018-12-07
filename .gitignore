@@ -2,7 +2,8 @@
 *.bak
 *.tar.xz
 *.zip
-depcomp
+*.srt
+*depcomp
 Makefile.in
 aclocal.m4
 zip-files/

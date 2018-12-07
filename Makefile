@@ -1,7 +1,7 @@
 # Basic Makefile
 
 UUID = you2ber@konkor
-BASE_MODULES = metadata.json prefs.js stylesheet.css BACKERS.md extension.js convenience.js README.md install_ydl.sh LICENSE
+BASE_MODULES = metadata.json prefs.js stylesheet.css BACKERS.md extension.js convenience.js README.md LICENSE
 EXTRA_MEDIA = data/icons/u2b.svg \
               data/icons/000.svg \
               data/icons/025.svg \
