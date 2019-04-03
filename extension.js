@@ -6,8 +6,9 @@ const Main = imports.ui.main;
 const PanelMenu = imports.ui.panelMenu;
 const PopupMenu = imports.ui.popupMenu;
 const MessageTray = imports.ui.messageTray;
-const Gio = imports.gi.Gio;
+const GObject = imports.gi.GObject;
 const GLib = imports.gi.GLib;
+const Gio = imports.gi.Gio;
 const Soup = imports.gi.Soup;
 
 const ExtensionUtils = imports.misc.extensionUtils;
@@ -178,7 +179,7 @@ const U2Indicator = new Lang.Class({
     this.menu.removeAll ();
 
     this.item = new YoutubeItem ();
-    this.menu.addMenuItem (this.item);
+    this.menu.addMenuItem (this.item.section);
     this.item.connect ('audio', Lang.bind (this, function (item) {
       if (!installed || !item.uri) return;
       var args = [ydl,"-o",AUDIODIR + "/%(title)s.%(ext)s","-x","-f"];
@@ -235,7 +236,7 @@ const U2Indicator = new Lang.Class({
     }));
 
     this.prefs = new PrefsMenuItem ();
-    this.menu.addMenuItem (this.prefs);
+    this.menu.addMenuItem (this.prefs.content);
 
     this.install = new PopupMenu.PopupMenuItem ("\u26a0 Installing youtube-dl...", {reactive: false});
     this.menu.addMenuItem (this.install);
@@ -249,12 +250,17 @@ const U2Indicator = new Lang.Class({
 
 const YoutubeItem = new Lang.Class ({
   Name: 'YoutubeItem',
-  Extends: PopupMenu.PopupMenuSection,
+  Extends: GObject.Object,
+  Signals: {
+      'audio': {},
+      'video': {},
+  },
 
   _init: function () {
     this.parent ();
+    this.section = new PopupMenu.PopupMenuSection ();
     this.item = new PopupMenu.PopupBaseMenuItem ({ reactive: false, can_focus: false });
-    this.addMenuItem (this.item);
+    this.section.addMenuItem (this.item);
 
     this.vbox = new St.BoxLayout({ vertical:true, style:"padding:0px;spacing:0", x_expand:true });
     this.item.actor.add_child (this.vbox);
@@ -271,11 +277,11 @@ const YoutubeItem = new Lang.Class ({
     box.add (this.video_button);
 
     this.quality = new ProfileSubMenuItem (CUSTOM_ID);
-    this.addMenuItem (this.quality);
+    this.section.addMenuItem (this.quality.section);
     this.video = new ProfileSubMenuItem (AUTO_VIDEO_ID);
-    this.addMenuItem (this.video);
+    this.section.addMenuItem (this.video.section);
     this.audio = new ProfileSubMenuItem (AUTO_AUDIO_ID);
-    this.addMenuItem (this.audio);
+    this.section.addMenuItem (this.audio.section);
     this.quality.connect ('select', Lang.bind (this, (o)=>{
       this.on_profile (o.profile);
     }));
@@ -289,7 +295,7 @@ const YoutubeItem = new Lang.Class ({
     let icon = new St.Icon({ style_class: 'popup-menu-icon' });
     icon.icon_name = "format-text-underline-symbolic";
     this.subtitles.actor.add_child (icon);
-    this.addMenuItem (this.subtitles);
+    this.section.addMenuItem (this.subtitles);
 
     this.audio_button.connect ('clicked', Lang.bind (this, function () {
       this.emit ('audio');
@@ -300,7 +306,7 @@ const YoutubeItem = new Lang.Class ({
       this.item.activate ();
     }));
     this.label.connect ('notify::text', Lang.bind (this, function () {
-      this.actor.visible = this.label.text.length > 0;
+      this.section.actor.visible = this.label.text.length > 0;
     }));
     this.set_text ("");
     this.uri = "";
@@ -381,9 +387,9 @@ const YoutubeItem = new Lang.Class ({
   },
 
   get_quality: function (text) {
-    this.quality.actor.visible = false;
-    this.video.actor.visible = false;
-    this.audio.actor.visible = false;
+    this.quality.section.actor.visible = false;
+    this.video.section.actor.visible = false;
+    this.audio.section.actor.visible = false;
     this.quality.add_default ();
     this.video.add_default ();
     this.audio.add_default ();
@@ -443,15 +449,15 @@ const YoutubeItem = new Lang.Class ({
       }
     }
     if (this.profiles.length > 0) {
-      this.quality.actor.visible = true;
+      this.quality.section.actor.visible = true;
       this.on_profile (this.quality.profile);
     }
   },
 
   on_profile: function (profile) {
     var custom = this.quality.profile.id == CUSTOM_ID;
-    this.video.actor.visible = custom;
-    this.audio.actor.visible = custom;
+    this.video.section.actor.visible = custom;
+    this.audio.section.actor.visible = custom;
 
     this.audio_button.visible = !(custom && !this.audio.profile.audio);
     this.video_button.visible = !(custom && !this.video.profile.video);
@@ -460,10 +466,14 @@ const YoutubeItem = new Lang.Class ({
 
 const ProfileSubMenuItem = new Lang.Class({
   Name: 'ProfileSubMenuItem',
-  Extends: PopupMenu.PopupMenuSection,
+  Extends: GObject.Object,
+  Signals: {
+      'select': {},
+  },
 
   _init: function (id) {
     this.parent ();
+    this.section = new PopupMenu.PopupMenuSection ();
     let label_text = "";
     this._icon = new St.Icon({ style_class: 'popup-menu-icon' });
     if (id == CUSTOM_ID) {
@@ -483,7 +493,7 @@ const ProfileSubMenuItem = new Lang.Class({
     this.label = new PopupMenu.PopupMenuItem (label_text, { reactive: false, can_focus: false });
     //this.addMenuItem (this.label);
     this.submenu = new PopupMenu.PopupSubMenuMenuItem (this.default_profile.desc, false);
-    this.addMenuItem (this.submenu);
+    this.section.addMenuItem (this.submenu);
     this.submenu.actor.add_child (this._icon);
   },
 
@@ -494,7 +504,7 @@ const ProfileSubMenuItem = new Lang.Class({
 
   add_profile: function (profile) {
     let mi = new QualityMenuItem (profile);
-    this.submenu.menu.addMenuItem (mi);
+    this.submenu.menu.addMenuItem (mi.content);
     mi.connect ('select', Lang.bind (this, (o)=>{
       this.on_profile (o.profile);
     }));
@@ -510,11 +520,16 @@ const ProfileSubMenuItem = new Lang.Class({
 
 const QualityMenuItem = new Lang.Class({
   Name: 'QualityMenuItem',
-  Extends: PopupMenu.PopupMenuItem,
+  Extends: GObject.Object,
+  Signals: {
+      'select': {},
+  },
 
   _init: function (profile) {
-    this.parent (profile.desc);
+    this.parent ();
+    this.content = new PopupMenu.PopupMenuItem (profile.desc);
     this.profile = profile;
+    this.content.activate = this.activate.bind (this);
   },
 
   activate: function (event) {
@@ -524,18 +539,17 @@ const QualityMenuItem = new Lang.Class({
 
 const PrefsMenuItem = new Lang.Class({
   Name: 'PrefsMenuItem',
-  Extends: PopupMenu.PopupBaseMenuItem,
 
   _init: function () {
-    this.parent ({ reactive: false, can_focus: false});
-    this.actor.add (new St.Label ({text: ' '}), { expand: true });
+    this.content = new PopupMenu.PopupBaseMenuItem ({ reactive: false, can_focus: false});
+    this.content.actor.add (new St.Label ({text: ' '}), { expand: true });
     this.preferences = new St.Button ({ child: new St.Icon ({ icon_name: 'preferences-system-symbolic' }), style_class: 'system-menu-action'});
-    this.actor.add (this.preferences, { expand: true, x_fill: false });
+    this.content.actor.add (this.preferences, { expand: true, x_fill: false });
     this.preferences.connect ('clicked', Lang.bind (this, function () {
       GLib.spawn_command_line_async ('gnome-shell-extension-prefs ' + Me.uuid);
       this.emit ('activate');
     }));
-    this.actor.add (new St.Label ({text: ' '}), { expand: true });
+    this.content.actor.add (new St.Label ({text: ' '}), { expand: true });
   }
 });
 
