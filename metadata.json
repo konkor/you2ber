@@ -12,9 +12,10 @@
     "3.24",
     "3.26",
     "3.28",
-    "3.30"
+    "3.30",
+    "3.32"
   ],
   "url": "https://github.com/konkor/you2ber",
   "uuid": "you2ber@konkor",
-  "version": 5
+  "version": 7
 }
