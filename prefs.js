@@ -67,7 +67,8 @@ var U2PreferencesWidget = new Lang.Class({
       LANGUAGE = "en";
 
     let label = null;
-    this.notebook = new Gtk.Notebook ({expand:true});
+    this.notebook = new Gtk.Notebook ();
+    this.notebook.x_expand = true;
 
     this.general = new PageGeneral (this.settings);
     this.notebook.add (this.general);
@@ -100,7 +101,7 @@ var PageGeneral = new Lang.Class({
 
   _init: function (settings) {
     let label;
-    this.parent ({orientation:Gtk.Orientation.VERTICAL, margin:6});
+    this.parent ({orientation:Gtk.Orientation.VERTICAL});
     this.settings = settings;
     this.border_width = 6;
 

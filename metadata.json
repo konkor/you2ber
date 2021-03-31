@@ -13,9 +13,11 @@
     "3.26",
     "3.28",
     "3.30",
-    "3.32"
+    "3.32",
+    "40.beta",
+    "40.0"
   ],
   "url": "https://github.com/konkor/you2ber",
   "uuid": "you2ber@konkor",
-  "version": 7
+  "version": 9
 }

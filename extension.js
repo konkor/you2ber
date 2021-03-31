@@ -542,14 +542,18 @@ const PrefsMenuItem = new Lang.Class({
 
   _init: function () {
     this.content = new PopupMenu.PopupBaseMenuItem ({ reactive: false, can_focus: false});
-    this.content.actor.add (new St.Label ({text: ' '}), { expand: true });
-    this.preferences = new St.Button ({ child: new St.Icon ({ icon_name: 'preferences-system-symbolic' }), style_class: 'system-menu-action'});
-    this.content.actor.add (this.preferences, { expand: true, x_fill: false });
-    this.preferences.connect ('clicked', Lang.bind (this, function () {
-      GLib.spawn_command_line_async ('gnome-shell-extension-prefs ' + Me.uuid);
+    let l = new St.Label ({text: ' '});
+    l.x_expand = true;
+    this.content.actor.add (l);
+    this.preferences = new St.Button ({ child: new St.Icon ({ icon_name: 'preferences-system-symbolic', icon_size: 28 }), style_class: 'system-menu-action'});
+    this.content.actor.add (this.preferences);
+    this.preferences.connect ('clicked', () => {
+      GLib.spawn_command_line_async (EXTENSIONDIR + "/preferences");
       this.emit ('activate');
-    }));
-    this.content.actor.add (new St.Label ({text: ' '}), { expand: true });
+    });
+    l = new St.Label ({text: ' '});
+    l.x_expand = true;
+    this.content.actor.add (l);
   }
 });
 
