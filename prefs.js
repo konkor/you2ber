@@ -67,8 +67,7 @@ var U2PreferencesWidget = new Lang.Class({
       LANGUAGE = "en";
 
     let label = null;
-    this.notebook = new Gtk.Notebook ();
-    this.notebook.x_expand = true;
+    this.notebook = new Gtk.Notebook ({expand:true});
 
     this.general = new PageGeneral (this.settings);
     this.notebook.add (this.general);
@@ -250,11 +249,26 @@ function error (msg) {
   Convenience.error (msg);
 }
 
+var DumpWidget = new Lang.Class({
+    Name: 'DumpWidget',
+    Extends: Gtk.Box,
+
+    _init: function () {
+        this.parent ({});
+        //this.connect ('realize', () => { this.get_parent().get_parent().close ();});
+    }
+});
+
 function init() {
   Convenience.initTranslations ();
 }
 
 function buildPrefsWidget() {
+  if (Gtk.MAJOR_VERSION > 3) {
+    GLib.spawn_command_line_async (EXTENSIONDIR + "/preferences");
+    let widget = new DumpWidget ();
+    return widget;
+  }
   let widget = new U2PreferencesWidget ();
   return widget.notebook;
 }
