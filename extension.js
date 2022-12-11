@@ -1,4 +1,3 @@
-const Lang = imports.lang;
 const St = imports.gi.St;
 const Clipboard = St.Clipboard.get_default();
 const CLIPBOARD_TYPE = St.ClipboardType.CLIPBOARD;
@@ -59,8 +58,8 @@ const U2Indicator = new Lang.Class({
     this.get_settings ();
 
     installed = Convenience.check_install_ydl ();
-    if (!installed) Convenience.install_ydl (Lang.bind (this, this.installation_cb));
-    else Convenience.check_update_ydl (Lang.bind (this, this.version_cb));
+    if (!installed) Convenience.install_ydl (this.installation_cb.bind(this));
+    else Convenience.check_update_ydl (this.version_cb.bind(this));
     ydl = Convenience.ydl;
     this._icon_on = new St.Icon ({
       gicon:Gio.icon_new_for_string (EXTENSIONDIR + "/data/icons/u2b.svg")
@@ -82,7 +81,7 @@ const U2Indicator = new Lang.Class({
     let _box = new St.BoxLayout();
     _box.add_actor(this.status);
     this.actor.add_actor (_box);
-    this.actor.connect('button-press-event', Lang.bind(this, function () {
+    this.actor.connect('button-press-event', () => {
       if (!this.menu.isOpen) return;
       if (!installed) installed = Convenience.check_install_ydl ();
       if (this.install) {
@@ -90,7 +89,7 @@ const U2Indicator = new Lang.Class({
       }
       this.get_settings ();
       if (installed) this.get_clipboard ();
-    }));
+    });
 
     this.build_menu ();
     if (downloads) this.add_animation ();
@@ -121,7 +120,7 @@ const U2Indicator = new Lang.Class({
 
   version_cb: function (state) {
     updated = state;
-    if (!updated) Convenience.install_ydl (Lang.bind (this, this.installation_cb));
+    if (!updated) Convenience.install_ydl (this.installation_cb.bind(this));
   },
 
   get_clipboard: function () {
@@ -140,7 +139,7 @@ const U2Indicator = new Lang.Class({
       GLib.source_remove (animate_event);
       animate_event = 0;
     }
-    animate_event = GLib.timeout_add (100, A_TIMEOUT, Lang.bind (this, this.animate));
+    animate_event = GLib.timeout_add (100, A_TIMEOUT, this.animate.bind(this));
   },
 
   animate: function () {
@@ -180,22 +179,22 @@ const U2Indicator = new Lang.Class({
 
     this.item = new YoutubeItem ();
     this.menu.addMenuItem (this.item.section);
-    this.item.connect ('audio', Lang.bind (this, function (item) {
+    this.item.connect ('audio', (item) => {
       if (!installed || !item.uri) return;
       var args = [ydl,"-o",AUDIODIR + "/%(title)s.%(ext)s","-x","-f"];
       if (item.audio.profile.id != AUTO_AUDIO_ID) args.push (item.audio.profile.id);
       else args.push ("m4a");
       if (!PLAYLISTS) args.push ("--no-playlist");
       args.push (item.uri);
-      spawn_async (args, Lang.bind (this, function (p,s,o){
+      spawn_async (args, (p,s,o) => {
         show_notification ("Complete " + item.uri + s);
         downloads--;
-      }));
+      });
       show_notification ("Starting " + item.uri);
       downloads++;
       this.add_animation ();
-    }));
-    this.item.connect ('video', Lang.bind (this, function (item) {
+    });
+    this.item.connect ('video', (item) => {
       if (!installed || !item.uri) return;
       var args = [ydl,"-o",VIDEODIR + "/%(title)s.%(ext)s"];
       var auto, ap = item.audio.profile, vp = item.video.profile;
@@ -226,14 +225,14 @@ const U2Indicator = new Lang.Class({
       var s = "";
       args.forEach(p=>{s += p + " ";});
       print (s);
-      spawn_async (args, Lang.bind (this, function (p,s,o){
+      spawn_async (args, (p,s,o) => {
         show_notification ("Complete " + item.uri + s);
         downloads--;
-      }));
+      });
       show_notification ("Starting " + item.uri);
       downloads++;
       this.add_animation ();
-    }));
+    });
 
     this.prefs = new PrefsMenuItem ();
     this.menu.addMenuItem (this.prefs.content);
@@ -282,32 +281,32 @@ const YoutubeItem = new Lang.Class ({
     this.section.addMenuItem (this.video.section);
     this.audio = new ProfileSubMenuItem (AUTO_AUDIO_ID);
     this.section.addMenuItem (this.audio.section);
-    this.quality.connect ('select', Lang.bind (this, (o)=>{
+    this.quality.connect ('select', (o) => {
       this.on_profile (o.profile);
-    }));
-    this.video.connect ('select', Lang.bind (this, (o)=>{
+    });
+    this.video.connect ('select', (o) => {
       this.on_profile (o.profile);
-    }));
-    this.audio.connect ('select', Lang.bind (this, (o)=>{
+    });
+    this.audio.connect ('select', (o) => {
       this.on_profile (o.profile);
-    }));
+    });
     this.subtitles = new PopupMenu.PopupSubMenuMenuItem ("Subtitles", false);
     let icon = new St.Icon({ style_class: 'popup-menu-icon' });
     icon.icon_name = "format-text-underline-symbolic";
     this.subtitles.actor.add_child (icon);
     this.section.addMenuItem (this.subtitles);
 
-    this.audio_button.connect ('clicked', Lang.bind (this, function () {
+    this.audio_button.connect ('clicked', () => {
       this.emit ('audio');
       this.item.activate ();
-    }));
-    this.video_button.connect ('clicked', Lang.bind (this, function () {
+    });
+    this.video_button.connect ('clicked', () => {
       this.emit ('video');
       this.item.activate ();
-    }));
-    this.label.connect ('notify::text', Lang.bind (this, function () {
+    });
+    this.label.connect ('notify::text', () => {
       this.section.actor.visible = this.label.text.length > 0;
-    }));
+    });
     this.set_text ("");
     this.uri = "";
     this.profile = {id:"",desc:"Auto Profile",audio:true,video:true};
@@ -321,10 +320,10 @@ const YoutubeItem = new Lang.Class ({
     this.uri = uri;
     this.set_text (uri);
     if (!ydl) return;
-    var pipe = new SpawnPipe ([ydl,"-e",this.uri], null, Lang.bind (this, (stdout, err) => {
+    var pipe = new SpawnPipe ([ydl,"-e",this.uri], null, (stdout, err) => {
       if (stdout.length) this.set_text (stdout[0]);
       else if (err) this.set_text (err);
-    }));
+    });
     this.get_quality ();
     this.get_subtitles ();
   },
@@ -333,9 +332,9 @@ const YoutubeItem = new Lang.Class ({
     this.subtitles.actor.visible = false;
     this.subtitles.menu.removeAll ();
     this.subs = []; this.caps = [];
-    var pipe = new SpawnPipe ([ydl,"--list-subs",this.uri], null, Lang.bind (this, (stdout, err) => {
+    var pipe = new SpawnPipe ([ydl,"--list-subs",this.uri], null, (stdout, err) => {
       if (stdout.length) this.get_subs (stdout);
-    }));
+    });
   },
 
   get_subs: function (text) {
@@ -350,7 +349,7 @@ const YoutubeItem = new Lang.Class ({
     }
     let mi = new PopupMenu.PopupMenuItem ("Auto-generated (" + LANGUAGE + ")");
     this.subtitles.menu.addMenuItem (mi);
-    mi.connect ('activate', Lang.bind (this, (o)=>{
+    mi.connect ('activate', (o) => {
       var pl = PLAYLISTS?"":"--no-playlist ";
       if (GLib.spawn_command_line_async (ydl + " -o " + VIDEODIR +
         "/%(title)s.%(ext)s --write-auto-sub --sub-lang " + LANGUAGE +
@@ -358,30 +357,30 @@ const YoutubeItem = new Lang.Class ({
         "--convert-subs srt --skip-download " + pl + this.uri))
         show_notification ("Starting " + this.uri);
       else show_notification ("Error " + this.uri);
-    }));
+    });
     if (this.subs.length > 0) {
       mi = new PopupMenu.PopupMenuItem ("All Available Languages");
       this.subtitles.menu.addMenuItem (mi);
-      mi.connect ('activate', Lang.bind (this, (o)=>{
+      mi.connect ('activate', (o) => {
         var pl = PLAYLISTS?"":"--no-playlist ";
         if (GLib.spawn_command_line_async (ydl + " -o " + VIDEODIR +
           "/%(title)s.%(ext)s --write-sub --sub-format best --all-subs " +
           "--convert-subs srt --skip-download " + pl + this.uri))
           show_notification ("Starting " + this.uri);
         else show_notification ("Error " + this.uri);
-      }));
+      });
     }
     this.subs.forEach (p=>{
       mi = new PopupMenu.PopupMenuItem (p);
       this.subtitles.menu.addMenuItem (mi);
-      mi.connect ('activate', Lang.bind (this, (o)=>{
+      mi.connect ('activate', (o) => {
         var pl = PLAYLISTS?"":"--no-playlist ";
         if (GLib.spawn_command_line_async (ydl + " -o " + VIDEODIR +
           "/%(title)s.%(ext)s --write-sub --sub-format best --sub-lang " +
           o.label.text + " --convert-subs srt --skip-download " + pl + this.uri))
           show_notification ("Starting " + this.uri);
         else show_notification ("Error " + this.uri);
-      }));
+      });
     });
     this.subtitles.actor.visible = true;
   },
@@ -394,9 +393,9 @@ const YoutubeItem = new Lang.Class ({
     this.video.add_default ();
     this.audio.add_default ();
     this.profiles = [];
-    var pipe = new SpawnPipe ([ydl,"-F",this.uri], null, Lang.bind (this, (stdout, err) => {
+    var pipe = new SpawnPipe ([ydl,"-F",this.uri], null, (stdout, err) => {
       if (stdout.length) this.get_profiles (stdout);
-    }));
+    });
   },
 
   get_profiles: function (text) {
@@ -505,9 +504,9 @@ const ProfileSubMenuItem = new Lang.Class({
   add_profile: function (profile) {
     let mi = new QualityMenuItem (profile);
     this.submenu.menu.addMenuItem (mi.content);
-    mi.connect ('select', Lang.bind (this, (o)=>{
+    mi.connect ('select', (o) => {
       this.on_profile (o.profile);
-    }));
+    });
   },
 
   on_profile: function (profile) {
@@ -580,12 +579,12 @@ var SpawnPipe = new Lang.Class({
       GLib.io_add_watch (errchannel,100,GLib.IOCondition.IN | GLib.IOCondition.HUP, (channel, condition) => {
         return this.process_line (channel, condition, "stderr");
       });
-      let watch = GLib.child_watch_add (100, pid, Lang.bind (this, (pid, status, o) => {
+      let watch = GLib.child_watch_add (100, pid, (pid, status, o) => {
         debug ("watch handler " + pid + ":" + status + ":" + o);
         GLib.source_remove (watch);
         GLib.spawn_close_pid (pid);
         if (callback) callback (this.stdout, this.error);
-      }));
+      });
     } catch (e) {
       error (e);
     }
@@ -632,9 +631,9 @@ let notify_source = null;
 function init_notify () {
   if (notify_source) return;
   notify_source = new MessageTray.Source ("You2berIndicator", "applications-internet");
-  notify_source.connect ('destroy', Lang.bind (this, function () {
+  notify_source.connect ('destroy', () => {
     notify_source = null;
-  }));
+  });
   Main.messageTray.add (notify_source);
 }
 
