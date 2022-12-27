@@ -47,12 +47,10 @@ let uris = [];
 let downloads = 0;
 let icons = [];
 
-const U2Indicator = new Lang.Class({
-  Name: "U2Indicator",
-  Extends: PanelMenu.Button,
+const U2Indicator = GObject.registerClass(class U2Indicator extends PanelMenu.Button {
 
-  _init: function () {
-    this.parent (0.0, "Gnome Youtube Downloader", false);
+  _init () {
+    super._init (0.0, "Gnome Youtube Downloader", false);
 
     this.settings = Convenience.getSettings();
     this.get_settings ();
@@ -80,8 +78,8 @@ const U2Indicator = new Lang.Class({
     this.status.gicon = this._icon_on.gicon;
     let _box = new St.BoxLayout();
     _box.add_actor(this.status);
-    this.actor.add_actor (_box);
-    this.actor.connect('button-press-event', () => {
+    this.add_actor (_box);
+    this.connect('button-press-event', () => {
       if (!this.menu.isOpen) return;
       if (!installed) installed = Convenience.check_install_ydl ();
       if (this.install) {
@@ -93,9 +91,9 @@ const U2Indicator = new Lang.Class({
 
     this.build_menu ();
     if (downloads) this.add_animation ();
-  },
+  }
 
-  get_settings: function () {
+  get_settings () {
     DEBUG = this.settings.get_boolean (DEBUG_KEY);
     AUDIODIR = this.settings.get_string (AUDIO_KEY);
     if (!AUDIODIR) AUDIODIR = Convenience.get_special_dir (GLib.UserDirectory.DIRECTORY_MUSIC);
@@ -106,9 +104,9 @@ const U2Indicator = new Lang.Class({
     LANGUAGE = this.settings.get_string (LANGUAGE_KEY);
     if (Convenience.LANGS.indexOf (LANGUAGE) == -1)
       LANGUAGE = "en";
-  },
+  }
 
-  installation_cb: function () {
+  installation_cb () {
     let s = updated ? "Installation" : "Updating";
     installed = !!Convenience.ydl;
     s = installed ? s + " complete." : s + " failed.";
@@ -116,14 +114,14 @@ const U2Indicator = new Lang.Class({
     updated = true;
     ydl = Convenience.ydl;
     if (this.install) this.install.actor.visible = !installed;
-  },
+  }
 
-  version_cb: function (state) {
+  version_cb (state) {
     updated = state;
     if (!updated) Convenience.install_ydl (this.installation_cb.bind(this));
-  },
+  }
 
-  get_clipboard: function () {
+  get_clipboard () {
     let self = this;
     Clipboard.get_text (CLIPBOARD_TYPE, function (c, text) {
       if (text && text != last_text) {
@@ -132,17 +130,17 @@ const U2Indicator = new Lang.Class({
       }
     });
     return true;
-  },
+  }
 
-  add_animation: function () {
+  add_animation () {
     if (animate_event) {
       GLib.source_remove (animate_event);
       animate_event = 0;
     }
     animate_event = GLib.timeout_add (100, A_TIMEOUT, this.animate.bind(this));
-  },
+  }
 
-  animate: function () {
+  animate () {
     if (!downloads) {
       this.status.gicon = this._icon_on.gicon;
       return false;
@@ -151,9 +149,9 @@ const U2Indicator = new Lang.Class({
     animate_idx++;
     if (animate_idx > 3) animate_idx = 0;
     return true;
-  },
+  }
 
-  on_new_text: function () {
+  on_new_text () {
     let ar = last_text.split ("\n");
     uris = [];
     ar.forEach (s=>{
@@ -162,9 +160,9 @@ const U2Indicator = new Lang.Class({
     if (uris.length) {
       this.item.set_uri (uris[0]);
     }
-  },
+  }
 
-  is_y2b: function (text) {
+  is_y2b (text) {
     let uri = new Soup.URI (text), res = true;
     if (!uri) res = false;
     if (res && uri.scheme != "https") res = false;
@@ -172,9 +170,9 @@ const U2Indicator = new Lang.Class({
     if (res && !uri.path) res = false;
     if (uri) uri = null;
     return res;
-  },
+  }
 
-  build_menu: function () {
+  build_menu () {
     this.menu.removeAll ();
 
     this.item = new YoutubeItem ();
@@ -239,24 +237,23 @@ const U2Indicator = new Lang.Class({
 
     this.install = new PopupMenu.PopupMenuItem ("\u26a0 Installing youtube-dl...", {reactive: false});
     this.menu.addMenuItem (this.install);
-  },
+  }
 
-  remove_events: function () {
+  remove_events () {
     if (animate_event != 0) GLib.source_remove (animate_event);
     animate_event = 0;
   }
 });
 
-const YoutubeItem = new Lang.Class ({
-  Name: 'YoutubeItem',
-  Extends: GObject.Object,
+const YoutubeItem = GObject.registerClass ({
   Signals: {
-      'audio': {},
-      'video': {},
+    'audio': {},
+    'video': {},
   },
+}, class YoutubeItem extends GObject.Object {
 
-  _init: function () {
-    this.parent ();
+  _init () {
+    super._init ();
     this.section = new PopupMenu.PopupMenuSection ();
     this.item = new PopupMenu.PopupBaseMenuItem ({ reactive: false, can_focus: false });
     this.section.addMenuItem (this.item);
@@ -298,11 +295,11 @@ const YoutubeItem = new Lang.Class ({
 
     this.audio_button.connect ('clicked', () => {
       this.emit ('audio');
-      this.item.activate ();
+      this.item.activate (null);
     });
     this.video_button.connect ('clicked', () => {
       this.emit ('video');
-      this.item.activate ();
+      this.item.activate (null);
     });
     this.label.connect ('notify::text', () => {
       this.section.actor.visible = this.label.text.length > 0;
@@ -310,13 +307,13 @@ const YoutubeItem = new Lang.Class ({
     this.set_text ("");
     this.uri = "";
     this.profile = {id:"",desc:"Auto Profile",audio:true,video:true};
-  },
+  }
 
-  set_text: function (text) {
+  set_text (text) {
     this.label.set_text (text);
-  },
+  }
 
-  set_uri: function (uri) {
+  set_uri (uri) {
     this.uri = uri;
     this.set_text (uri);
     if (!ydl) return;
@@ -326,18 +323,18 @@ const YoutubeItem = new Lang.Class ({
     });
     this.get_quality ();
     this.get_subtitles ();
-  },
+  }
 
-  get_subtitles: function (text) {
+  get_subtitles (text) {
     this.subtitles.actor.visible = false;
     this.subtitles.menu.removeAll ();
     this.subs = []; this.caps = [];
     var pipe = new SpawnPipe ([ydl,"--list-subs",this.uri], null, (stdout, err) => {
       if (stdout.length) this.get_subs (stdout);
     });
-  },
+  }
 
-  get_subs: function (text) {
+  get_subs (text) {
     var s = "", auto = true;
     for (let i=0; i<text.length; i++) {
       if (text[i].trim().length < 2) continue;
@@ -383,9 +380,9 @@ const YoutubeItem = new Lang.Class ({
       });
     });
     this.subtitles.actor.visible = true;
-  },
+  }
 
-  get_quality: function (text) {
+  get_quality (text) {
     this.quality.section.actor.visible = false;
     this.video.section.actor.visible = false;
     this.audio.section.actor.visible = false;
@@ -396,9 +393,9 @@ const YoutubeItem = new Lang.Class ({
     var pipe = new SpawnPipe ([ydl,"-F",this.uri], null, (stdout, err) => {
       if (stdout.length) this.get_profiles (stdout);
     });
-  },
+  }
 
-  get_profiles: function (text) {
+  get_profiles (text) {
     var ar = [], s = "", a = true, v = true, id = "", i;
     var qs = [144,240,360,480,720,1080,1440,2160,4320];
     var qd = ["Lowest","Mobile","Video CD","DVD","HD Ready","Full HD","2K Video","4K Video","8K Video"];
@@ -451,9 +448,9 @@ const YoutubeItem = new Lang.Class ({
       this.quality.section.actor.visible = true;
       this.on_profile (this.quality.profile);
     }
-  },
+  }
 
-  on_profile: function (profile) {
+  on_profile (profile) {
     var custom = this.quality.profile.id == CUSTOM_ID;
     this.video.section.actor.visible = custom;
     this.audio.section.actor.visible = custom;
@@ -463,15 +460,14 @@ const YoutubeItem = new Lang.Class ({
   }
 });
 
-const ProfileSubMenuItem = new Lang.Class({
-  Name: 'ProfileSubMenuItem',
-  Extends: GObject.Object,
+const ProfileSubMenuItem = GObject.registerClass ({
   Signals: {
-      'select': {},
-  },
+    'select': {}
+  }
+}, class ProfileSubMenuItem extends GObject.Object {
 
-  _init: function (id) {
-    this.parent ();
+  _init (id) {
+    super._init ();
     this.section = new PopupMenu.PopupMenuSection ();
     let label_text = "";
     this._icon = new St.Icon({ style_class: 'popup-menu-icon' });
@@ -494,22 +490,22 @@ const ProfileSubMenuItem = new Lang.Class({
     this.submenu = new PopupMenu.PopupSubMenuMenuItem (this.default_profile.desc, false);
     this.section.addMenuItem (this.submenu);
     this.submenu.actor.add_child (this._icon);
-  },
+  }
 
-  add_default: function () {
+  add_default () {
     this.submenu.menu.removeAll ();
     if (this.default_profile.id != "") this.add_profile (this.default_profile);
-  },
+  }
 
-  add_profile: function (profile) {
+  add_profile (profile) {
     let mi = new QualityMenuItem (profile);
     this.submenu.menu.addMenuItem (mi.content);
     mi.connect ('select', (o) => {
       this.on_profile (o.profile);
     });
-  },
+  }
 
-  on_profile: function (profile) {
+  on_profile (profile) {
     this.profile = profile;
     this.submenu.label.text = profile.desc;
     this.submenu.setSubmenuShown (false);
@@ -517,29 +513,27 @@ const ProfileSubMenuItem = new Lang.Class({
   }
 });
 
-const QualityMenuItem = new Lang.Class({
-  Name: 'QualityMenuItem',
-  Extends: GObject.Object,
+const QualityMenuItem = GObject.registerClass ({
   Signals: {
-      'select': {},
-  },
+    'select': {}
+  }
+}, class QualityMenuItem extends GObject.Object {
 
-  _init: function (profile) {
-    this.parent ();
+  _init (profile) {
+    super._init ();
     this.content = new PopupMenu.PopupMenuItem (profile.desc);
     this.profile = profile;
     this.content.activate = this.activate.bind (this);
-  },
+  }
 
-  activate: function (event) {
+  activate (event) {
     this.emit ('select');
   }
 });
 
-const PrefsMenuItem = new Lang.Class({
-  Name: 'PrefsMenuItem',
+const PrefsMenuItem = class You2ber_PrefsMenuItem {
 
-  _init: function () {
+  constructor () {
     this.content = new PopupMenu.PopupBaseMenuItem ({ reactive: false, can_focus: false});
     let l = new St.Label ({text: ' '});
     l.x_expand = true;
@@ -554,12 +548,11 @@ const PrefsMenuItem = new Lang.Class({
     l.x_expand = true;
     this.content.actor.add (l);
   }
-});
+};
 
-var SpawnPipe = new Lang.Class({
-  Name: 'SpawnPipe',
+var SpawnPipe = class You2ber_SpawnPipe {
 
-  _init: function (args, dir, callback) {
+  constructor (args, dir, callback) {
     debug (args);
     dir = dir || "/";
     let exit, pid, stdin_fd, stdout_fd, stderr_fd;
@@ -588,9 +581,9 @@ var SpawnPipe = new Lang.Class({
     } catch (e) {
       error (e);
     }
-  },
+  }
 
-  process_line: function (channel, condition, stream_name) {
+  process_line (channel, condition, stream_name) {
     if (condition == GLib.IOCondition.HUP) {
       debug (stream_name, ": has been closed");
       return false;
@@ -610,7 +603,7 @@ var SpawnPipe = new Lang.Class({
     }
     return true;
   }
-});
+};
 
 function spawn_async (args, callback) {
   callback = callback || null;
@@ -627,26 +620,26 @@ function spawn_async (args, callback) {
   });
 }
 
-let notify_source = null;
-function init_notify () {
-  if (notify_source) return;
-  notify_source = new MessageTray.Source ("You2berIndicator", "applications-internet");
-  notify_source.connect ('destroy', () => {
-    notify_source = null;
-  });
-  Main.messageTray.add (notify_source);
-}
+let freedesktop = null;
 
 function show_notification (message) {
-  let notification = null;
-
-  init_notify ();
-
-  notification = new MessageTray.Notification (notify_source, message);
-  notification.setTransient (true);
-  notify_source.notify (notification);
+  if (!message) return;
+  if (!freedesktop) freedesktop = Gio.DBusProxy.new_for_bus_sync (
+    Gio.BusType.SESSION,0,null,"org.freedesktop.Notifications",
+    "/org/freedesktop/Notifications", "org.freedesktop.Notifications", null
+  );
+  freedesktop.call ("Notify", new GLib.Variant("(susssasa{sv}i)", [
+      "You2ber",
+      42,
+      "applications-internet",
+      "Youtube",
+      message,
+      [],
+      {},
+      5000
+    ]), 0,-1,null, (o,a) => {
+  });
 }
-
 
 function debug (msg) {
   if (DEBUG) Convenience.debug (msg);
