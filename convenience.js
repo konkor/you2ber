@@ -20,7 +20,8 @@
  * with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-const Lang = imports.lang;
+imports.gi.versions.Soup = "3";
+
 const ByteArray = imports.byteArray;
 const GLib = imports.gi.GLib;
 const Gio = imports.gi.Gio;
@@ -72,20 +73,28 @@ function getSettings (schema) {
   return new Gio.Settings({ settings_schema: schemaObj });
 }
 
-function fetch (url, agent, headers, callback) {
+async function fetch (url, agent, headers, callback) {
   callback = callback || null;
   agent = agent || "You2ber (GNU/Linux)";
 
-  let session = new Soup.SessionAsync({ user_agent: agent });
-  Soup.Session.prototype.add_feature.call (session, new Soup.ProxyResolverDefault());
+  let session = Soup.Session.new ({ user_agent: agent });
+  //TODO: Soup.Session.prototype.add_feature.call (session, new Soup.ProxyResolverDefault());
   let request = Soup.Message.new ("GET", url);
   if (headers) headers.forEach (h=>{
     request.request_headers.append (h[0], h[1]);
   });
-  session.queue_message (request, (source, message) => {
+  try {
+    await session.send_message_async (request);
+    let response = await session.send_message_finish_async (request);
+    if (callback)
+      callback (response.response_body_data.get_data (), response.status_code);
+  } catch (e) {
+    error ("fetch", `Error making HTTP request: ${e.message}`);
+  }
+  /*session.queue_message (request, (source, message) => {
     if (callback)
       callback (message.response_body_data.get_data (), message.status_code);
-  });
+  }); */
 }
 
 var ydl = "";
@@ -116,7 +125,7 @@ function check_install_ydl () {
 function install_ydl (callback) {
   print ("install_ydl");
   fetch ("https://yt-dl.org/downloads/latest/youtube-dl",
-    "You2ber (GNU/Linux)", null, Lang.bind (this, (data, s) => {
+    "You2ber (GNU/Linux)", null, (data, s) => {
       if ((s == 200) && data) {
         let file = Gio.File.new_for_path (get_user_bin_dir () + "/youtube-dl");
         file.replace_contents_bytes_async (
@@ -128,20 +137,20 @@ function install_ydl (callback) {
         );
       }
       return false;
-  }));
+  });
   return true;
 }
 
 function check_update_ydl (callback) {
   print ("check_update_ydl");
   fetch ("https://rg3.github.io/youtube-dl/update/LATEST_VERSION",
-    "You2ber (GNU/Linux)", null, Lang.bind (this, (text, s) => {
+    "You2ber (GNU/Linux)", null, (text, s) => {
       if ((s == 200) && text) {
         latest_version = bytesToString (text).toString().split("\n")[0];
       }
       if (callback) callback (latest_version == current_version);
       return false;
-  }));
+  });
 }
 
 function get_user_bin_dir () {

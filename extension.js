@@ -8,7 +8,6 @@ const MessageTray = imports.ui.messageTray;
 const GObject = imports.gi.GObject;
 const GLib = imports.gi.GLib;
 const Gio = imports.gi.Gio;
-const Soup = imports.gi.Soup;
 
 const ExtensionUtils = imports.misc.extensionUtils;
 const Me = ExtensionUtils.getCurrentExtension ();
@@ -163,12 +162,12 @@ const U2Indicator = GObject.registerClass(class U2Indicator extends PanelMenu.Bu
   }
 
   is_y2b (text) {
-    let uri = new Soup.URI (text), res = true;
-    if (!uri) res = false;
-    if (res && uri.scheme != "https") res = false;
-    if (res && !(uri.host.indexOf ("youtube.com") > -1 || uri.host == "youtu.be")) res = false;
-    if (res && !uri.path) res = false;
-    if (uri) uri = null;
+    let res = GLib.Uri.is_valid (text, 0);
+
+    if (res){
+      res = text.indexOf ("https://www.youtube.com") == 0 || text.indexOf ("https://youtu.be") == 0;
+    }
+
     return res;
   }
 
